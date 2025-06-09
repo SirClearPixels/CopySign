@@ -1,0 +1,42 @@
+# CopySign Messages Configuration
+# Use '&' for color codes
+
+messages:
+  PREFIX: "&8[&bCopySign&8] &7"
+  SIGN_COPIED: "&aSign text copied to your held sign!"
+  NO_PERMISSION: "&cYou don't have permission to do that!"
+  INVALID_SIGN: "&cThat's not a valid sign!"
+  MUST_HOLD_SIGN: "&cYou must be holding a sign to copy text!"
+  NO_PERMISSION_USE: "&cYou don't have permission to use CopySign!"
+  NO_PERMISSION_LIBRARY: "&cYou don't have permission to use the sign library!"
+  NO_PERMISSION_RELOAD: "&cYou don't have permission to reload the plugin!"
+  COMMAND_PLAYER_ONLY: "&cThis command is only available for players!"
+  COPYSIGN_USAGE: "&cUsage: /copysign <on|off|clear|save|load|delete|library|reload|templates>"
+  COPYSIGN_ENABLED: "&aSign copy feature enabled."
+  COPYSIGN_DISABLED: "&cSign copy feature disabled."
+  PLUGIN_RELOADED: "&aPlugin configuration and messages reloaded successfully!"
+  CLEAR_NO_ITEM: "&cYou are not holding a sign with stored NBT data!"
+  CLEAR_SUCCESS: "&aNBT data cleared from held sign."
+  SIGN_SAVED_SUCCESSFULLY: "&aSign saved successfully!"
+  SIGN_DELETED: "&aSign deleted successfully!"
+  SIGN_LOADED: "&aSign loaded successfully!"
+  SAVED_SIGN_NOT_FOUND: "&cNo saved sign found with that name."
+  SIGN_TYPE_MISMATCH: "&cError: Sign type mismatch while loading the sign."
+  SIGN_ALREADY_EXISTS: "&cA sign with that name already exists. Please choose a different name."
+  SIGN_NO_DATA: "&cThe sign item does not contain saved data."
+  SIGN_LIBRARY_EMPTY: "&cYour sign library is empty."
+  MAX_SIGNS_REACHED: "&cYou have reached the maximum number of saved signs ({max})!"
+  HANGING_SIGN: "hanging sign"
+  REGULAR_SIGN: "regular sign"
+  SIGN_TYPE_NOT_ALLOWED_COPY: "&cThat sign type is not allowed to be copied."
+  SIGN_TYPE_NOT_ALLOWED_PASTE: "&cThat sign type is not allowed for pasting."
+  SIGN_TYPE_NOT_ALLOWED_SAVE: "&cThat sign type is not allowed for saving."
+  SIGN_TYPE_NOT_ALLOWED_LOAD: "&cThat sign type is not allowed for loading."
+  
+  # Error handling messages
+  FILE_ERROR: "&cA file error occurred. Please try again or contact an administrator."
+  CONFIG_ERROR: "&cConfiguration error detected. Using default settings."
+  NBT_ERROR: "&cSign data appears to be corrupted. Please try copying the sign again."
+  PERFORMANCE_ERROR: "&cOperation failed due to server load. Please try again in a moment."
+  GENERAL_ERROR: "&cAn unexpected error occurred. Please try again or contact an administrator."
+  # Removed unused keys: EDIT_USAGE, CREATE_USAGE, sign-created, sign-edited, invalid-side 
