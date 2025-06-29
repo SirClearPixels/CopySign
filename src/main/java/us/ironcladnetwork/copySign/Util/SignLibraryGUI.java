@@ -77,6 +77,7 @@ public class SignLibraryGUI {
                     ? Material.OAK_HANGING_SIGN : Material.OAK_SIGN;
             ItemStack signItem = new ItemStack(material);
             ItemMeta meta = signItem.getItemMeta();
+            if (meta == null) continue; // Skip this item if meta is null
             // Set the display name to include the saved sign's key.
             meta.setDisplayName("Sign: " + signName);
             List<String> lore = new ArrayList<>();
@@ -124,23 +125,29 @@ public class SignLibraryGUI {
         if (page > 0) {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta prevMeta = prev.getItemMeta();
-            prevMeta.setDisplayName("Previous Page");
-            prev.setItemMeta(prevMeta);
+            if (prevMeta != null) {
+                prevMeta.setDisplayName("Previous Page");
+                prev.setItemMeta(prevMeta);
+            }
             inv.setItem(45, prev);
         }
         // Next page button (if more entries exist) at slot 49.
         if ((page + 1) * ENTRIES_PER_PAGE < entries.size()) {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta nextMeta = next.getItemMeta();
-            nextMeta.setDisplayName("Next Page");
-            next.setItemMeta(nextMeta);
+            if (nextMeta != null) {
+                nextMeta.setDisplayName("Next Page");
+                next.setItemMeta(nextMeta);
+            }
             inv.setItem(49, next);
         }
         // Exit button always at slot 53.
         ItemStack exit = new ItemStack(Material.BARRIER);
         ItemMeta exitMeta = exit.getItemMeta();
-        exitMeta.setDisplayName("Exit");
-        exit.setItemMeta(exitMeta);
+        if (exitMeta != null) {
+            exitMeta.setDisplayName("Exit");
+            exit.setItemMeta(exitMeta);
+        }
         inv.setItem(53, exit);
 
         player.openInventory(inv);

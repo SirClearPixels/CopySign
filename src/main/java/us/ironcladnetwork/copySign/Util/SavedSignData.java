@@ -122,8 +122,11 @@ public class SavedSignData {
      * @param section The configuration section to write data into.
      */
     public void saveToConfigurationSection(ConfigurationSection section) {
-        // Combine front and back arrays into newline-delimited strings.
-        StringBuilder frontBuilder = new StringBuilder();
+        // Combine front and back arrays into newline-delimited strings with optimized StringBuilder capacity.
+        
+        // Calculate estimated capacity for front text
+        int frontCapacity = calculateStringCapacity(front);
+        StringBuilder frontBuilder = new StringBuilder(frontCapacity);
         if (front != null) {
             for (int i = 0; i < front.length; i++) {
                 frontBuilder.append(front[i]);
@@ -131,7 +134,10 @@ public class SavedSignData {
                     frontBuilder.append("\n");
             }
         }
-        StringBuilder backBuilder = new StringBuilder();
+        
+        // Calculate estimated capacity for back text
+        int backCapacity = calculateStringCapacity(back);
+        StringBuilder backBuilder = new StringBuilder(backCapacity);
         if (back != null) {
             for (int i = 0; i < back.length; i++) {
                 backBuilder.append(back[i]);
@@ -146,5 +152,32 @@ public class SavedSignData {
         section.set("backColor", backColor);
         section.set("signType", signType);
         section.set("lore", lore);
+    }
+    
+    /**
+     * Calculates the estimated capacity needed for a StringBuilder when combining sign lines.
+     * This prevents unnecessary array reallocations during string building.
+     * 
+     * @param lines The array of lines to estimate capacity for
+     * @return The estimated capacity needed
+     */
+    private int calculateStringCapacity(String[] lines) {
+        if (lines == null || lines.length == 0) {
+            return 16; // Default small capacity
+        }
+        
+        int totalLength = 0;
+        for (String line : lines) {
+            if (line != null) {
+                totalLength += line.length();
+            }
+        }
+        
+        // Add space for newline characters (lines.length - 1) plus some buffer (20%)
+        int newlineCount = Math.max(0, lines.length - 1);
+        int estimatedCapacity = totalLength + newlineCount;
+        
+        // Add 20% buffer to avoid frequent reallocations
+        return (int) (estimatedCapacity * 1.2);
     }
 } 

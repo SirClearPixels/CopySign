@@ -10,7 +10,14 @@ import us.ironcladnetwork.copySign.Util.CopySignToggleManager;
 import us.ironcladnetwork.copySign.Util.SignLibraryManager;
 import us.ironcladnetwork.copySign.Util.CooldownManager;
 import us.ironcladnetwork.copySign.Util.ServerTemplateManager;
+import us.ironcladnetwork.copySign.Util.SignDataCache;
 import us.ironcladnetwork.copySign.Listeners.SignLibraryGUIListener;
+
+import org.bukkit.configuration.ConfigurationSection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Main plugin class for the CopySign Minecraft plugin.
@@ -48,6 +55,8 @@ public final class CopySign extends JavaPlugin {
     private SignLibraryManager signLibraryManager;
     // Field for managing command cooldowns
     private CooldownManager cooldownManager;
+    // ReadWriteLock for thread-safe configuration access
+    private final ReadWriteLock configLock = new ReentrantReadWriteLock();
     // Field for managing server-wide templates
     private ServerTemplateManager serverTemplateManager;
 
@@ -87,7 +96,7 @@ public final class CopySign extends JavaPlugin {
         // Initialize the server template manager
         serverTemplateManager = new ServerTemplateManager(getDataFolder(), this);
         
-        // Load messages
+        // Load messages (no lock needed during startup)
         reloadConfig();
         Lang.init(this);
         
@@ -125,9 +134,10 @@ public final class CopySign extends JavaPlugin {
         }
         
         // Register command executor with both toggle and sign library manager dependencies.
-        getCommand("copysign").setExecutor(new us.ironcladnetwork.copySign.Commands.CopySignCommand(toggleManager, signLibraryManager));
+        us.ironcladnetwork.copySign.Commands.CopySignCommand commandExecutor = new us.ironcladnetwork.copySign.Commands.CopySignCommand(toggleManager, signLibraryManager);
+        getCommand("copysign").setExecutor(commandExecutor);
         // Tab completion is handled by CopySignCommand itself (implements TabCompleter)
-        // getCommand("copysign").setTabCompleter(new us.ironcladnetwork.copySign.Commands.CopySignTabCompleter(signLibraryManager));
+        getCommand("copysign").setTabCompleter(commandExecutor);
         
         // Register event listeners
         getServer().getPluginManager().registerEvents(new SignCopyListener(), this);
@@ -143,31 +153,210 @@ public final class CopySign extends JavaPlugin {
         
         // Start periodic cooldown cleanup task (every 5 minutes)
         getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
-            cooldownManager.cleanupExpiredCooldowns();
+            // Snapshot config values on main thread for thread safety
+            Map<String, Integer> cooldownConfig = new HashMap<>();
+            configLock.readLock().lock();
+            try {
+                // Read all cooldown configurations while holding read lock
+                if (getConfig().contains("commands.cooldowns")) {
+                    ConfigurationSection cooldownsSection = getConfig().getConfigurationSection("commands.cooldowns");
+                    if (cooldownsSection != null) {
+                        for (String command : cooldownsSection.getKeys(false)) {
+                            cooldownConfig.put(command, cooldownsSection.getInt(command, 0));
+                        }
+                    }
+                }
+            } finally {
+                configLock.readLock().unlock();
+            }
+            
+            // Pass the snapshotted config to cleanup method
+            cooldownManager.cleanupExpiredCooldowns(cooldownConfig);
+        }, 6000L, 6000L); // 6000 ticks = 5 minutes
+        
+        // Start periodic SignDataCache cleanup task (every 5 minutes)
+        getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+            SignDataCache.cleanupExpiredEntries();
         }, 6000L, 6000L); // 6000 ticks = 5 minutes
     }
 
     /**
      * Performs cleanup when the plugin is disabled.
      * <p>
-     * This method ensures that the plugin's configuration is saved before shutdown.
-     * Additional cleanup tasks may be added in the future as needed.
+     * This method ensures that all data is properly saved before shutdown.
+     * Saves are performed synchronously to guarantee data persistence.
      * 
      * @see #onEnable()
      */
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        // Clear the sign data cache on shutdown
+        SignDataCache.clear();
+        
+        // Save all manager data synchronously to prevent data loss
+        getLogger().info("Saving plugin data...");
+        
+        // Save sign library data
+        if (signLibraryManager != null) {
+            if (signLibraryManager.saveConfigSync()) {
+                getLogger().info("Sign library data saved successfully.");
+            } else {
+                getLogger().warning("Failed to save sign library data!");
+            }
+        }
+        
+        // Save player toggle states
+        if (toggleManager != null) {
+            if (toggleManager.saveConfigSync()) {
+                getLogger().info("Player toggle states saved successfully.");
+            } else {
+                getLogger().warning("Failed to save player toggle states!");
+            }
+        }
+        
+        // Server templates are saved immediately when modified, no need for explicit save
+        
+        // Save main plugin configuration
         saveConfig();
+        getLogger().info("Plugin configuration saved successfully.");
     }
 
     /**
      * Reloads the plugin's configuration and messages.
+     * Thread-safe implementation prevents race conditions during concurrent operations.
      */
     public void reloadPlugin() {
-        reloadConfig();
-        Lang.init(this);
-        serverTemplateManager.reload();
+        configLock.writeLock().lock();
+        try {
+            getLogger().info("Reloading plugin configuration...");
+            
+            // Reload the main configuration
+            reloadConfig();
+            
+            // Reinitialize language messages with new config
+            Lang.init(this);
+            
+            // Reload server template manager
+            if (serverTemplateManager != null) {
+                serverTemplateManager.reload();
+            }
+            
+            getLogger().info("Plugin configuration reloaded successfully.");
+            
+        } catch (Exception e) {
+            getLogger().severe("Failed to reload plugin configuration: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            configLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Thread-safe configuration access method.
+     * Uses read lock to allow concurrent reads while preventing reads during config reload.
+     * 
+     * @param configAction A function that takes the config and returns a result
+     * @return The result of the config action
+     */
+    public <T> T withConfigLock(java.util.function.Function<org.bukkit.configuration.file.FileConfiguration, T> configAction) {
+        configLock.readLock().lock();
+        try {
+            return configAction.apply(getConfig());
+        } finally {
+            configLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Thread-safe configuration access method for operations that don't return values.
+     * 
+     * @param configAction A consumer that uses the config
+     */
+    public void withConfigLock(java.util.function.Consumer<org.bukkit.configuration.file.FileConfiguration> configAction) {
+        configLock.readLock().lock();
+        try {
+            configAction.accept(getConfig());
+        } finally {
+            configLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Thread-safe method to get a boolean value from config.
+     * 
+     * @param path The configuration path
+     * @param defaultValue The default value if not found
+     * @return The boolean value from config
+     */
+    public boolean getConfigBoolean(String path, boolean defaultValue) {
+        configLock.readLock().lock();
+        try {
+            return getConfig().getBoolean(path, defaultValue);
+        } finally {
+            configLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Thread-safe method to get an int value from config.
+     * 
+     * @param path The configuration path
+     * @param defaultValue The default value if not found
+     * @return The int value from config
+     */
+    public int getConfigInt(String path, int defaultValue) {
+        configLock.readLock().lock();
+        try {
+            return getConfig().getInt(path, defaultValue);
+        } finally {
+            configLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Thread-safe method to get a string value from config.
+     * 
+     * @param path The configuration path
+     * @param defaultValue The default value if not found
+     * @return The string value from config
+     */
+    public String getConfigString(String path, String defaultValue) {
+        configLock.readLock().lock();
+        try {
+            return getConfig().getString(path, defaultValue);
+        } finally {
+            configLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Thread-safe method to check if config contains a path.
+     * 
+     * @param path The configuration path
+     * @return True if the path exists
+     */
+    public boolean configContains(String path) {
+        configLock.readLock().lock();
+        try {
+            return getConfig().contains(path);
+        } finally {
+            configLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Thread-safe method to get a configuration section.
+     * 
+     * @param path The configuration path
+     * @return The configuration section or null if not found
+     */
+    public ConfigurationSection getConfigSectionSafe(String path) {
+        configLock.readLock().lock();
+        try {
+            return getConfig().getConfigurationSection(path);
+        } finally {
+            configLock.readLock().unlock();
+        }
     }
     
     /**

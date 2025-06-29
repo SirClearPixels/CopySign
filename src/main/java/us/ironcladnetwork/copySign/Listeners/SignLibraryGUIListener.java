@@ -60,10 +60,11 @@ public class SignLibraryGUIListener implements Listener {
         event.setCancelled(true);
 
         ItemStack clickedItem = event.getCurrentItem();
-        if (clickedItem == null || !clickedItem.hasItemMeta())
+        if (clickedItem == null || clickedItem.getType() == Material.AIR || !clickedItem.hasItemMeta())
             return;
 
         ItemMeta meta = clickedItem.getItemMeta();
+        if (meta == null) return; // Prevent NPE
         String displayName = meta.getDisplayName();
         Player player = (Player) event.getWhoClicked();
 

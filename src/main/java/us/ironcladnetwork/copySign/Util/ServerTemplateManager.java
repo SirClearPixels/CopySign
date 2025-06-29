@@ -1,10 +1,12 @@
 package us.ironcladnetwork.copySign.Util;
 
 import de.tr7zw.nbtapi.NBTItem;
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
 import java.io.IOException;
@@ -128,7 +130,7 @@ public class ServerTemplateManager {
         }
         
         // Validate that the signItem is not null and is of a sign type.
-        if (signItem == null || !signItem.getType().name().endsWith("_SIGN")) {
+        if (signItem == null || signItem.getType() == Material.AIR || !signItem.getType().name().endsWith("_SIGN")) {
             player.sendMessage(Lang.PREFIX.get() + "&cInvalid sign item.");
             return false;
         }
@@ -150,8 +152,11 @@ public class ServerTemplateManager {
 
         // Get lore from the item meta if present.
         java.util.List<String> lore = null;
-        if (signItem.hasItemMeta() && signItem.getItemMeta().hasLore()) {
-            lore = signItem.getItemMeta().getLore();
+        if (signItem.hasItemMeta()) {
+            ItemMeta itemMeta = signItem.getItemMeta();
+            if (itemMeta != null && itemMeta.hasLore()) {
+                lore = itemMeta.getLore();
+            }
         }
 
         // Process the front/back text into arrays of lines.

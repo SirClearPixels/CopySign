@@ -77,26 +77,31 @@ public class ServerTemplateGUI {
             // Add "Create New Template" button for admins
             ItemStack createButton = new ItemStack(Material.EMERALD);
             ItemMeta createMeta = createButton.getItemMeta();
-            createMeta.setDisplayName("§a§lCreate New Template");
+            if (createMeta != null) {
+                createMeta.setDisplayName("§a§lCreate New Template");
             List<String> createLore = new ArrayList<>();
             createLore.add("§7Hold a sign with copied data");
             createLore.add("§7and click to save as template");
-            createMeta.setLore(createLore);
-            createButton.setItemMeta(createMeta);
+                createMeta.setLore(createLore);
+                createButton.setItemMeta(createMeta);
+            }
             gui.setItem(size - 5, createButton);
         }
         
         // Add close button
         ItemStack closeButton = new ItemStack(Material.BARRIER);
         ItemMeta closeMeta = closeButton.getItemMeta();
-        closeMeta.setDisplayName("§c§lClose");
-        closeButton.setItemMeta(closeMeta);
+        if (closeMeta != null) {
+            closeMeta.setDisplayName("§c§lClose");
+            closeButton.setItemMeta(closeMeta);
+        }
         gui.setItem(size - 1, closeButton);
         
         // Add info item
         ItemStack infoItem = new ItemStack(Material.BOOK);
         ItemMeta infoMeta = infoItem.getItemMeta();
-        infoMeta.setDisplayName("§e§lServer Templates");
+        if (infoMeta != null) {
+            infoMeta.setDisplayName("§e§lServer Templates");
         List<String> infoLore = new ArrayList<>();
         infoLore.add("§7These are server-wide templates");
         infoLore.add("§7available to all players.");
@@ -109,8 +114,9 @@ public class ServerTemplateGUI {
             infoLore.add("");
             infoLore.add("§e• Click§7 to load a template");
         }
-        infoMeta.setLore(infoLore);
-        infoItem.setItemMeta(infoMeta);
+            infoMeta.setLore(infoLore);
+            infoItem.setItemMeta(infoMeta);
+        }
         gui.setItem(size - 9, infoItem);
         
         player.openInventory(gui);
@@ -130,6 +136,7 @@ public class ServerTemplateGUI {
         
         ItemStack item = new ItemStack(signMaterial);
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) return item; // Fallback if meta is null
         
         // Set display name
         meta.setDisplayName("§6§l" + name);

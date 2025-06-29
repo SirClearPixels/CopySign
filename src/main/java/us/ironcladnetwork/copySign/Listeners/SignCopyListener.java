@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
 import de.tr7zw.nbtapi.NBTItem;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
@@ -13,8 +14,13 @@ import org.bukkit.inventory.meta.ItemMeta;
 import us.ironcladnetwork.copySign.Lang.Lang;
 import us.ironcladnetwork.copySign.CopySign;
 import us.ironcladnetwork.copySign.Util.ErrorHandler;
+import us.ironcladnetwork.copySign.Util.NBTValidationUtil;
+import us.ironcladnetwork.copySign.Util.Permissions;
+import us.ironcladnetwork.copySign.Util.VersionCompatibility;
 import java.util.ArrayList;
 import java.util.List;
+import us.ironcladnetwork.copySign.Util.SignValidationUtil;
+import us.ironcladnetwork.copySign.Util.SignLoreBuilder;
 import org.bukkit.DyeColor;
 
 /**
@@ -61,7 +67,7 @@ public class SignCopyListener implements Listener {
 
         // First check if the player is holding a sign - if not, silently return
         ItemStack heldItem = player.getInventory().getItemInMainHand();
-        if (heldItem == null || !heldItem.getType().name().endsWith("_SIGN")) {
+        if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
             // Player is not holding a sign, so they're not trying to copy - just return silently
             return;
         }
@@ -86,15 +92,15 @@ public class SignCopyListener implements Listener {
             return;
         }
 
-        // Now check if the clicked block is a sign (only show message when feature is enabled)
+        // Now check if the clicked block is a sign (return silently if not)
         Block clickedBlock = event.getClickedBlock();
         if (clickedBlock == null || !(clickedBlock.getState() instanceof Sign)) {
-            player.sendMessage(Lang.INVALID_SIGN.getWithPrefix());
+            // Return silently for non-sign blocks to avoid spam
             return;
         }
 
         // Check if the player has permission to use the sign copy feature.
-        if (!player.hasPermission("copysign.use")) {
+        if (!Permissions.canUse(player)) {
             player.sendMessage(Lang.NO_PERMISSION_USE.getWithPrefix());
             return;
         }
@@ -106,13 +112,13 @@ public class SignCopyListener implements Listener {
         }
 
         // Check if the clicked sign type is allowed
-        if (!isSignTypeAllowed(clickedBlock.getType().name())) {
+        if (!SignValidationUtil.isSignTypeAllowed(clickedBlock.getType().name())) {
             player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_COPY.getWithPrefix());
             return;
         }
         
         // Check if the held sign type is allowed
-        if (!isSignTypeAllowed(heldItem.getType().name())) {
+        if (!SignValidationUtil.isSignTypeAllowed(heldItem.getType().name())) {
             player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_COPY.getWithPrefix());
             return;
         }
@@ -123,9 +129,24 @@ public class SignCopyListener implements Listener {
         // A sign is considered hanging if its type name contains "HANGING_SIGN".
         boolean heldHanging = heldType.contains("HANGING_SIGN");
         boolean clickedHanging = clickedType.contains("HANGING_SIGN");
+        
+        // Check if player has permission to copy from this sign type
+        if (!Permissions.canCopySignType(player, clickedHanging)) {
+            player.sendMessage(Lang.PREFIX.get() + "§cYou don't have permission to copy from " + (clickedHanging ? "hanging" : "regular") + " signs.");
+            return;
+        }
+        
+        // Check if player has permission to paste to this sign type
+        if (!Permissions.canPasteSignType(player, heldHanging)) {
+            player.sendMessage(Lang.PREFIX.get() + "§cYou don't have permission to paste to " + (heldHanging ? "hanging" : "regular") + " signs.");
+            return;
+        }
+        
         // If the sign types do not match, send an error message and cancel the copy.
         if (heldHanging != clickedHanging) {
-            player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix("%s", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
+            player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
+                "%held%", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get(),
+                "%target%", clickedHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
             return;
         }
 
@@ -134,10 +155,11 @@ public class SignCopyListener implements Listener {
         DyeColor frontColor = sign.getSide(org.bukkit.block.sign.Side.FRONT).getColor();
         DyeColor backColor = sign.getSide(org.bukkit.block.sign.Side.BACK).getColor();
         
-        // If the player lacks permission to copy color, use our safe conversion fallback instead of directly calling DyeColor.valueOf("OAK")
-        if (!player.hasPermission("copysign.copycolor") || !CopySign.getInstance().getConfig().getBoolean("features.copy-colors", true)) {
-            frontColor = getValidDyeColor("black");
-            backColor = getValidDyeColor("black");
+        // If the player lacks permission to copy color, don't store color information
+        boolean copyColors = Permissions.canCopyColor(player) && CopySign.getInstance().getConfig().getBoolean("features.copy-colors", true);
+        if (!copyColors) {
+            frontColor = null;
+            backColor = null;
         }
 
         // Concatenate the sign's four lines for both front and back sides using newline as the separator.
@@ -152,22 +174,34 @@ public class SignCopyListener implements Listener {
             }
         }
 
-        // Copy the glow state from the sign
-        @SuppressWarnings("deprecation")
-        boolean signGlowing = sign.isGlowingText();
+        // Copy the glow state from the sign using version-compatible method
+        boolean signGlowing = VersionCompatibility.isSignGlowing(sign);
 
         // If the player lacks permission to copy glow, disable it
-        if (!player.hasPermission("copysign.copyglow") || !CopySign.getInstance().getConfig().getBoolean("features.copy-glow", true)) {
+        if (!Permissions.canCopyGlow(player) || !CopySign.getInstance().getConfig().getBoolean("features.copy-glow", true)) {
             signGlowing = false;
         }
 
         // Use NBT-API to store the copied sign text and side colors onto the held sign item.
         try {
+            // Validate sign text before storing in NBT
+            String frontTextStr = frontText.toString();
+            String backTextStr = backText.toString();
+            if (!NBTValidationUtil.validateNBTData(frontTextStr) || !NBTValidationUtil.validateNBTData(backTextStr)) {
+                player.sendMessage(Lang.PREFIX.get() + "§cSign text too large to copy");
+                return;
+            }
+            
             NBTItem nbtItem = new NBTItem(heldItem);
-            nbtItem.setString("copiedSignFront", frontText.toString());
-            nbtItem.setString("copiedSignBack", backText.toString());
-            nbtItem.setString("copiedSignFrontColor", frontColor.name());
-            nbtItem.setString("copiedSignBackColor", backColor.name());
+            nbtItem.setString("copiedSignFront", frontTextStr);
+            nbtItem.setString("copiedSignBack", backTextStr);
+            // Only store color information if colors were copied
+            if (frontColor != null) {
+                nbtItem.setString("copiedSignFrontColor", frontColor.name());
+            }
+            if (backColor != null) {
+                nbtItem.setString("copiedSignBackColor", backColor.name());
+            }
             nbtItem.setBoolean("signGlowing", signGlowing);
             // Store the sign type so that later paste or change events can verify the type if desired.
             nbtItem.setString("signType", clickedHanging ? "hanging" : "regular");
@@ -178,39 +212,12 @@ public class SignCopyListener implements Listener {
             // Update item meta with lore for visual display.
             ItemMeta meta = updatedItem.getItemMeta();
             if (meta != null) {
-                List<String> lore = new ArrayList<>();
-                lore.add("§f§l[§b§lCopied Sign§f§l]");
-                
-                // Handle front side
                 String[] frontLines = frontText.toString().split("\n");
-                boolean hasFrontData = false;
-                for (int i = 0; i < frontLines.length; i++) {
-                    if (!frontLines[i].isEmpty()) {
-                        if (!hasFrontData) {
-                            lore.add("§f§lFront:");
-                            lore.add("§f§lColor: " + frontColor.name());
-                            hasFrontData = true;
-                        }
-                        lore.add("§f§lLine " + (i + 1) + ": §f\"§b" + frontLines[i] + "§f\"");
-                    }
-                }
-                
-                // Handle back side
                 String[] backLines = backText.toString().split("\n");
-                boolean hasBackData = false;
-                for (int i = 0; i < backLines.length; i++) {
-                    if (!backLines[i].isEmpty()) {
-                        if (!hasBackData) {
-                            lore.add("§f§lBack:");
-                            lore.add("§f§lColor: " + backColor.name());
-                            hasBackData = true;
-                        }
-                        lore.add("§f§lLine " + (i + 1) + ": §f\"§b" + backLines[i] + "§f\"");
-                    }
-                }
-                
-                // Always show glowing state
-                lore.add("§e§lGlowing: " + (signGlowing ? "§aTrue" : "§cFalse"));
+                List<String> lore = SignLoreBuilder.buildSignLore(frontLines, backLines, 
+                    frontColor != null ? frontColor.name() : null, 
+                    backColor != null ? backColor.name() : null, 
+                    signGlowing, null);
                 
                 meta.setLore(lore);
                 updatedItem.setItemMeta(meta);
@@ -229,41 +236,4 @@ public class SignCopyListener implements Listener {
         }
     }
 
-    /**
-     * Safely converts a string to a DyeColor.
-     * If the provided string is not a valid DyeColor (e.g. "OAK"), it falls back to a default value.
-     *
-     * @param colorString the stored string representing the color
-     * @return a valid DyeColor (DyeColor.WHITE as default)
-     */
-    private DyeColor getValidDyeColor(String colorString) {
-        try {
-            return DyeColor.valueOf(colorString.toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            // Map known non-dye values to a fallback. In this case, "OAK" is likely coming from an oak sign.
-            if (colorString.equalsIgnoreCase("oak")) {
-                return DyeColor.WHITE; // default to white or choose your preferred fallback.
-            }
-            // Log a warning if desired, then return a default value.
-            return DyeColor.WHITE;
-        }
-    }
-
-    /**
-     * Checks if a sign type is allowed to be copied based on the configuration.
-     * 
-     * @param signType The material name of the sign (e.g., "OAK_SIGN", "BIRCH_HANGING_SIGN")
-     * @return true if the sign type is allowed, false otherwise
-     */
-    private boolean isSignTypeAllowed(String signType) {
-        List<String> allowedTypes = CopySign.getInstance().getConfig().getStringList("sign-types.allowed");
-        
-        // If the list is empty, allow all sign types (default behavior)
-        if (allowedTypes.isEmpty()) {
-            return true;
-        }
-        
-        // Check if the specific sign type is in the allowed list
-        return allowedTypes.contains(signType);
-    }
 } 

@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Commands;
 
 import de.tr7zw.nbtapi.NBTItem;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -13,12 +14,15 @@ import us.ironcladnetwork.copySign.Util.CopySignToggleManager;
 import us.ironcladnetwork.copySign.Util.SignLibraryManager;
 import us.ironcladnetwork.copySign.Util.SavedSignData;
 import us.ironcladnetwork.copySign.Util.SignLibraryGUI;
+import us.ironcladnetwork.copySign.Util.NBTValidationUtil;
+import us.ironcladnetwork.copySign.Util.Permissions;
+import us.ironcladnetwork.copySign.Util.SignValidationUtil;
+import us.ironcladnetwork.copySign.Util.SignLoreBuilder;
 
-import java.util.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -53,7 +57,7 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         Player player = (Player) sender;
 
         // Check basic permission for all commands
-        if (!player.hasPermission("copysign.use")) {
+        if (!Permissions.canUse(player)) {
             player.sendMessage(Lang.NO_PERMISSION_USE.getWithPrefix());
             return true;
         }
@@ -67,17 +71,32 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         String subCommand = args[0].toLowerCase(Locale.ENGLISH);
         switch(subCommand) {
             case "on":
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.on", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Set state to enabled and persist it.
                 toggleManager.setCopySignEnabled(player, true);
                 player.sendMessage(Lang.COPYSIGN_ENABLED.getWithPrefix());
                 break;
             case "off":
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.off", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Set state to disabled and persist it.
                 toggleManager.setCopySignEnabled(player, false);
                 player.sendMessage(Lang.COPYSIGN_DISABLED.getWithPrefix());
                 break;
             case "clear":
-                // Check if the clear command is enabled in config
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.clear", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
+                // Check if the clear command feature is enabled in config
                 if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfig().getBoolean("features.clear-command", true)) {
                     player.sendMessage(Lang.PREFIX.get() + "&cClear command is currently disabled.");
                     return true;
@@ -88,7 +107,7 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 ItemStack heldItem = player.getInventory().getItemInMainHand();
-                if (heldItem == null) {
+                if (heldItem == null || heldItem.getType() == Material.AIR) {
                     player.sendMessage(Lang.CLEAR_NO_ITEM.getWithPrefix());
                 } else {
                     // Clear NBT data from the held item.
@@ -114,8 +133,13 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 }
                 break;
             case "save": {
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.save", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Check library permission for library commands
-                if (!player.hasPermission("copysign.library")) {
+                if (!Permissions.canSaveToLibrary(player)) {
                     player.sendMessage(Lang.NO_PERMISSION_LIBRARY.getWithPrefix());
                     return true;
                 }
@@ -135,18 +159,25 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 String saveName = args[1];
+                
+                // Validate save name input
+                if (!SignValidationUtil.isValidSignName(saveName)) {
+                    player.sendMessage(Lang.PREFIX.get() + "§cInvalid sign name. Use only letters, numbers, hyphens, and underscores (max 32 characters).");
+                    return true;
+                }
+                
                 // Check if a sign with this name already exists for the player.
                 if (signLibraryManager.getSign(player, saveName) != null) {
                     player.sendMessage(Lang.SIGN_ALREADY_EXISTS.getWithPrefix());
                     return true;
                 }
                 ItemStack heldItemForSave = player.getInventory().getItemInMainHand();
-                if (heldItemForSave == null) {
+                if (heldItemForSave == null || heldItemForSave.getType() == Material.AIR) {
                     player.sendMessage(Lang.MUST_HOLD_SIGN.getWithPrefix());
                     return true;
                 }
                 // Check if the held sign type is allowed
-                if (!isSignTypeAllowed(heldItemForSave.getType().name())) {
+                if (!SignValidationUtil.isSignTypeAllowed(heldItemForSave.getType().name())) {
                     player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_SAVE.getWithPrefix());
                     return true;
                 }
@@ -162,8 +193,13 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 break;
             }
             case "library": {
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.library", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Check library permission for library commands
-                if (!player.hasPermission("copysign.library")) {
+                if (!Permissions.canViewLibrary(player)) {
                     player.sendMessage(Lang.NO_PERMISSION_LIBRARY.getWithPrefix());
                     return true;
                 }
@@ -188,8 +224,13 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 break;
             }
             case "delete": {
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.delete", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Check library permission for library commands
-                if (!player.hasPermission("copysign.library")) {
+                if (!Permissions.canDeleteFromLibrary(player)) {
                     player.sendMessage(Lang.NO_PERMISSION_LIBRARY.getWithPrefix());
                     return true;
                 }
@@ -209,6 +250,13 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 String deleteName = args[1];
+                
+                // Validate delete name input
+                if (!SignValidationUtil.isValidSignName(deleteName)) {
+                    player.sendMessage(Lang.PREFIX.get() + "§cInvalid sign name. Use only letters, numbers, hyphens, and underscores (max 32 characters).");
+                    return true;
+                }
+                
                 if (signLibraryManager.getSign(player, deleteName) == null) {
                     player.sendMessage(Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
                 } else {
@@ -219,8 +267,13 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 break;
             }
             case "load": {
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.load", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Check library permission for library commands
-                if (!player.hasPermission("copysign.library")) {
+                if (!Permissions.canLoadFromLibrary(player)) {
                     player.sendMessage(Lang.NO_PERMISSION_LIBRARY.getWithPrefix());
                     return true;
                 }
@@ -240,31 +293,52 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 String loadName = args[1];
+                
+                // Validate load name input
+                if (!SignValidationUtil.isValidSignName(loadName)) {
+                    player.sendMessage(Lang.PREFIX.get() + "§cInvalid sign name. Use only letters, numbers, hyphens, and underscores (max 32 characters).");
+                    return true;
+                }
+                
                 SavedSignData savedData = signLibraryManager.getSign(player, loadName);
                 if (savedData == null) {
                     player.sendMessage(Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
                     return true;
                 }
                 ItemStack heldItemForLoad = player.getInventory().getItemInMainHand();
-                if (heldItemForLoad == null || !heldItemForLoad.getType().name().endsWith("_SIGN")) {
+                if (heldItemForLoad == null || heldItemForLoad.getType() == Material.AIR || !heldItemForLoad.getType().name().endsWith("_SIGN")) {
                     player.sendMessage(Lang.MUST_HOLD_SIGN.getWithPrefix());
                     return true;
                 }
                 // Check if the held sign type is allowed
-                if (!isSignTypeAllowed(heldItemForLoad.getType().name())) {
+                if (!SignValidationUtil.isSignTypeAllowed(heldItemForLoad.getType().name())) {
                     player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_LOAD.getWithPrefix());
                     return true;
                 }
                 boolean heldHanging = heldItemForLoad.getType().name().contains("HANGING_SIGN");
                 boolean savedHanging = savedData.getSignType().equalsIgnoreCase("hanging");
                 if (heldHanging != savedHanging) {
-                    player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix("%s", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
+                    player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
+                        "%held%", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get(),
+                        "%target%", savedHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
                     return true;
                 }
                 NBTItem nbtItemForLoad = new NBTItem(heldItemForLoad);
+                // Validate sign data before storing in NBT
+                if (!NBTValidationUtil.validateSignData(savedData.getFront(), savedData.getBack())) {
+                    player.sendMessage(Lang.PREFIX.get() + "§cInvalid sign data: exceeds size limits");
+                    return true;
+                }
                 // Combine arrays into newline-delimited strings.
-                nbtItemForLoad.setString("copiedSignFront", String.join("\n", savedData.getFront()));
-                nbtItemForLoad.setString("copiedSignBack", String.join("\n", savedData.getBack()));
+                String frontText = String.join("\n", savedData.getFront());
+                String backText = String.join("\n", savedData.getBack());
+                // Additional validation for combined strings
+                if (!NBTValidationUtil.validateNBTData(frontText) || !NBTValidationUtil.validateNBTData(backText)) {
+                    player.sendMessage(Lang.PREFIX.get() + "§cInvalid sign data: text too large");
+                    return true;
+                }
+                nbtItemForLoad.setString("copiedSignFront", frontText);
+                nbtItemForLoad.setString("copiedSignBack", backText);
                 nbtItemForLoad.setString("copiedSignFrontColor", savedData.getFrontColor());
                 nbtItemForLoad.setString("copiedSignBackColor", savedData.getBackColor());
                 nbtItemForLoad.setBoolean("signGlowing", savedData.isGlowing());
@@ -274,40 +348,11 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 ItemStack updatedHeldItem = nbtItemForLoad.getItem();
                 ItemMeta meta = updatedHeldItem.getItemMeta();
                 if (meta != null) {
-                    List<String> lore = new ArrayList<>();
-                    lore.add("§f§l[§b§lCopied Sign§f§l]");
-                    
-                    // Handle front side
-                    String[] frontLines = savedData.getFront();
-                    boolean hasFrontData = false;
-                    for (int i = 0; i < frontLines.length; i++) {
-                        if (!frontLines[i].isEmpty()) {
-                            if (!hasFrontData) {
-                                lore.add("§f§lFront:");
-                                lore.add("§f§lColor: " + savedData.getFrontColor());
-                                hasFrontData = true;
-                            }
-                            lore.add("§f§lLine " + (i + 1) + ": §f\"§b" + frontLines[i] + "§f\"");
-                        }
-                    }
-                    
-                    // Handle back side
-                    String[] backLines = savedData.getBack();
-                    boolean hasBackData = false;
-                    for (int i = 0; i < backLines.length; i++) {
-                        if (!backLines[i].isEmpty()) {
-                            if (!hasBackData) {
-                                lore.add("§f§lBack:");
-                                lore.add("§f§lColor: " + savedData.getBackColor());
-                                hasBackData = true;
-                            }
-                            lore.add("§f§lLine " + (i + 1) + ": §f\"§b" + backLines[i] + "§f\"");
-                        }
-                    }
-                    
-                    // Always show glowing state
-                    lore.add("§e§lGlowing: " + (savedData.isGlowing() ? "§aTrue" : "§cFalse"));
-                    
+                    List<String> lore = SignLoreBuilder.buildSignLore(
+                        savedData.getFront(), savedData.getBack(),
+                        savedData.getFrontColor(), savedData.getBackColor(),
+                        savedData.isGlowing(), savedData.getSignType()
+                    );
                     meta.setLore(lore);
                     updatedHeldItem.setItemMeta(meta);
                 }
@@ -318,8 +363,13 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 break;
             }
             case "reload": {
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.reload", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Check reload permission
-                if (!player.hasPermission("copysign.reload")) {
+                if (!Permissions.canReload(player)) {
                     player.sendMessage(Lang.NO_PERMISSION_RELOAD.getWithPrefix());
                     return true;
                 }
@@ -329,24 +379,29 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 break;
             }
             case "templates": {
+                // Check if the command is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.templates", true)) {
+                    player.sendMessage(Lang.PREFIX.get() + "&cThis command is currently disabled.");
+                    return true;
+                }
                 // Check if the server-templates feature is enabled in config
                 if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfig().getBoolean("features.server-templates", true)) {
                     player.sendMessage(Lang.PREFIX.get() + "&cServer templates are currently disabled.");
                     return true;
                 }
                 // Check if player has permission to view templates
-                if (!player.hasPermission("copysign.templates")) {
+                if (!Permissions.canViewTemplates(player)) {
                     player.sendMessage(Lang.PREFIX.get() + "&cYou don't have permission to view server templates!");
                     return true;
                 }
                 // Get all server templates
                 Map<String, SavedSignData> templates = us.ironcladnetwork.copySign.CopySign.getServerTemplateManager().getAllTemplates();
-                if (templates.isEmpty() && !player.hasPermission("copysign.admin")) {
+                if (templates.isEmpty() && !Permissions.canCreateTemplates(player)) {
                     player.sendMessage(Lang.PREFIX.get() + "&cNo server templates are available.");
                     return true;
                 }
                 // Open the GUI
-                boolean canEdit = player.hasPermission("copysign.admin");
+                boolean canEdit = Permissions.canEditTemplates(player);
                 us.ironcladnetwork.copySign.GUI.ServerTemplateGUI.open(player, templates, canEdit);
                 break;
             }
@@ -366,27 +421,51 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         }
         
         Player player = (Player) sender;
-        if (!player.hasPermission("copysign.use")) {
+        if (!Permissions.canUse(player)) {
             return Collections.emptyList();
         }
 
-        // Build options list based on permissions
+        // Build options list based on permissions and command toggles
         List<String> options = new ArrayList<>();
-        // Basic commands available to all users with copysign.use
-        options.addAll(Arrays.asList("on", "off", "clear"));
         
-        // Library commands only available with copysign.library permission
-        if (player.hasPermission("copysign.library")) {
-            options.addAll(Arrays.asList("save", "library", "delete", "load"));
+        // Basic commands available to all users with copysign.use (check command toggles)
+        if (us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.on", true)) {
+            options.add("on");
+        }
+        if (us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.off", true)) {
+            options.add("off");
+        }
+        if (us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.clear", true)) {
+            options.add("clear");
         }
         
-        // Reload command only available with copysign.reload permission
-        if (player.hasPermission("copysign.reload")) {
+        // Library commands based on specific permissions and command toggles
+        if (Permissions.canSaveToLibrary(player) && 
+            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.save", true)) {
+            options.add("save");
+        }
+        if (Permissions.canViewLibrary(player) && 
+            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.library", true)) {
+            options.add("library");
+        }
+        if (Permissions.canDeleteFromLibrary(player) && 
+            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.delete", true)) {
+            options.add("delete");
+        }
+        if (Permissions.canLoadFromLibrary(player) && 
+            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.load", true)) {
+            options.add("load");
+        }
+        
+        // Reload command only available with copysign.reload permission and command toggle
+        if (Permissions.canReload(player) && 
+            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.reload", true)) {
             options.add("reload");
         }
         
-        // Templates command available with copysign.templates permission
-        if (player.hasPermission("copysign.templates")) {
+        // Templates command available with copysign.templates permission and command toggle
+        if (Permissions.canViewTemplates(player) && 
+            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.templates", true)) {
             options.add("templates");
         }
 
@@ -402,7 +481,8 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         // For subcommands that require a sign name, auto-complete for "delete" and "load" only.
         if (args.length == 2) {
             String subCommand = args[0].toLowerCase(Locale.ENGLISH);
-            if ((subCommand.equals("delete") || subCommand.equals("load")) && player.hasPermission("copysign.library")) {
+            if ((subCommand.equals("delete") && Permissions.canDeleteFromLibrary(player)) || 
+                (subCommand.equals("load") && Permissions.canLoadFromLibrary(player))) {
                 Map<String, SavedSignData> savedSigns = signLibraryManager.getAllSigns(player);
                 List<String> names = new ArrayList<>(savedSigns.keySet());
                 String current = args[1].toLowerCase(Locale.ENGLISH);
@@ -417,21 +497,4 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         return Collections.emptyList();
     }
     
-    /**
-     * Checks if a sign type is allowed based on the configuration.
-     * 
-     * @param signType The material name of the sign (e.g., "OAK_SIGN", "BIRCH_HANGING_SIGN")
-     * @return true if the sign type is allowed, false otherwise
-     */
-    private boolean isSignTypeAllowed(String signType) {
-        List<String> allowedTypes = us.ironcladnetwork.copySign.CopySign.getInstance().getConfig().getStringList("sign-types.allowed");
-        
-        // If the list is empty, allow all sign types (default behavior)
-        if (allowedTypes.isEmpty()) {
-            return true;
-        }
-        
-        // Check if the specific sign type is in the allowed list
-        return allowedTypes.contains(signType);
-    }
 }

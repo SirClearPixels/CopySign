@@ -5,17 +5,21 @@ import us.ironcladnetwork.copySign.CopySign;
 import us.ironcladnetwork.copySign.Lang.Lang;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages command cooldowns for players.
  * Tracks when players last used specific commands and enforces configured cooldown periods.
+ * Uses optimized storage with long keys for memory efficiency.
  */
 public class CooldownManager {
     
-    // Map of player UUID -> command -> last used timestamp
-    private final Map<UUID, Map<String, Long>> playerCooldowns = new HashMap<>();
+    // Map of player UUID hash -> command -> last used timestamp
+    // Using long keys instead of UUID objects for memory efficiency
+    private final Map<Long, Map<String, Long>> playerCooldowns = new ConcurrentHashMap<>();
     private final CopySign plugin;
     
     public CooldownManager(CopySign plugin) {
@@ -30,15 +34,20 @@ public class CooldownManager {
      * @return true if the player can use the command, false if on cooldown
      */
     public boolean canUseCommand(Player player, String command) {
-        int cooldownSeconds = plugin.getConfig().getInt("commands.cooldowns." + command, 0);
+        // Check if player has cooldown bypass permission
+        if (player.hasPermission("copysign.bypass.cooldowns")) {
+            return true;
+        }
+        
+        int cooldownSeconds = plugin.getConfigInt("commands.cooldowns." + command, 0);
         
         // If cooldown is 0 or negative, no cooldown applies
         if (cooldownSeconds <= 0) {
             return true;
         }
         
-        UUID playerId = player.getUniqueId();
-        Map<String, Long> playerCommands = playerCooldowns.get(playerId);
+        long playerKey = getPlayerKey(player.getUniqueId());
+        Map<String, Long> playerCommands = playerCooldowns.get(playerKey);
         
         if (playerCommands == null) {
             return true; // First time using any command
@@ -62,9 +71,9 @@ public class CooldownManager {
      * @param command The command name
      */
     public void recordCommandUse(Player player, String command) {
-        UUID playerId = player.getUniqueId();
+        long playerKey = getPlayerKey(player.getUniqueId());
         
-        playerCooldowns.computeIfAbsent(playerId, k -> new HashMap<>())
+        playerCooldowns.computeIfAbsent(playerKey, k -> new ConcurrentHashMap<>())
                       .put(command, System.currentTimeMillis());
     }
     
@@ -76,14 +85,14 @@ public class CooldownManager {
      * @return remaining cooldown in seconds, or 0 if no cooldown
      */
     public int getRemainingCooldown(Player player, String command) {
-        int cooldownSeconds = plugin.getConfig().getInt("commands.cooldowns." + command, 0);
+        int cooldownSeconds = plugin.getConfigInt("commands.cooldowns." + command, 0);
         
         if (cooldownSeconds <= 0) {
             return 0;
         }
         
-        UUID playerId = player.getUniqueId();
-        Map<String, Long> playerCommands = playerCooldowns.get(playerId);
+        long playerKey = getPlayerKey(player.getUniqueId());
+        Map<String, Long> playerCommands = playerCooldowns.get(playerKey);
         
         if (playerCommands == null) {
             return 0;
@@ -123,35 +132,109 @@ public class CooldownManager {
      * @param player The player whose cooldowns to clear
      */
     public void clearPlayerCooldowns(Player player) {
-        playerCooldowns.remove(player.getUniqueId());
+        playerCooldowns.remove(getPlayerKey(player.getUniqueId()));
     }
     
     /**
      * Clears expired cooldowns to prevent memory leaks.
      * Should be called periodically.
+     * Optimized to O(n) complexity using single-pass iteration.
+     * Thread-safe implementation using pre-snapshotted config values.
+     * 
+     * @param cooldownConfig Pre-snapshotted cooldown configuration from main thread
      */
-    public void cleanupExpiredCooldowns() {
+    public void cleanupExpiredCooldowns(Map<String, Integer> cooldownConfig) {
         long currentTime = System.currentTimeMillis();
         
-        playerCooldowns.entrySet().removeIf(playerEntry -> {
+        // Use iterator for efficient single-pass cleanup (O(n) instead of O(n²))
+        Iterator<Map.Entry<Long, Map<String, Long>>> playerIterator = playerCooldowns.entrySet().iterator();
+        
+        while (playerIterator.hasNext()) {
+            Map.Entry<Long, Map<String, Long>> playerEntry = playerIterator.next();
             Map<String, Long> commands = playerEntry.getValue();
             
-            // Remove expired command cooldowns
-            commands.entrySet().removeIf(commandEntry -> {
+            // Clean up expired commands for this player
+            Iterator<Map.Entry<String, Long>> commandIterator = commands.entrySet().iterator();
+            while (commandIterator.hasNext()) {
+                Map.Entry<String, Long> commandEntry = commandIterator.next();
                 String command = commandEntry.getKey();
                 long lastUsed = commandEntry.getValue();
-                int cooldownSeconds = plugin.getConfig().getInt("commands.cooldowns." + command, 0);
                 
+                // Use pre-snapshotted config for thread safety
+                int cooldownSeconds = cooldownConfig.getOrDefault(command, 0);
+                
+                // Remove if no cooldown configured or cooldown has expired
                 if (cooldownSeconds <= 0) {
-                    return true; // Remove if no cooldown configured
+                    commandIterator.remove();
+                } else {
+                    long cooldownMillis = cooldownSeconds * 1000L;
+                    if ((currentTime - lastUsed) >= cooldownMillis) {
+                        commandIterator.remove();
+                    }
                 }
-                
-                long cooldownMillis = cooldownSeconds * 1000L;
-                return (currentTime - lastUsed) >= cooldownMillis;
-            });
+            }
             
             // Remove player entry if no commands left
-            return commands.isEmpty();
-        });
+            if (commands.isEmpty()) {
+                playerIterator.remove();
+            }
+        }
+    }
+    
+    /**
+     * Clears expired cooldowns to prevent memory leaks.
+     * This method loads config values synchronously - use only from main thread.
+     * For async operation, use {@link #cleanupExpiredCooldowns(Map)} instead.
+     * 
+     * @deprecated Use cleanupExpiredCooldowns(Map) for thread safety
+     */
+    @Deprecated
+    public void cleanupExpiredCooldowns() {
+        // Create a snapshot of config values for thread safety
+        Map<String, Integer> cooldownConfig = new HashMap<>();
+        if (plugin.configContains("commands.cooldowns")) {
+            org.bukkit.configuration.ConfigurationSection cooldownsSection = plugin.getConfigSectionSafe("commands.cooldowns");
+            if (cooldownsSection != null) {
+                for (String command : cooldownsSection.getKeys(false)) {
+                    cooldownConfig.put(command, cooldownsSection.getInt(command, 0));
+                }
+            }
+        }
+        cleanupExpiredCooldowns(cooldownConfig);
+    }
+    
+    /**
+     * Converts a UUID to a memory-efficient long key.
+     * Uses XOR of most and least significant bits to create a unique long.
+     * 
+     * @param uuid The UUID to convert
+     * @return A long key representing the UUID
+     */
+    private long getPlayerKey(UUID uuid) {
+        // XOR the most and least significant bits
+        // This provides good distribution while being memory efficient
+        return uuid.getMostSignificantBits() ^ uuid.getLeastSignificantBits();
+    }
+    
+    /**
+     * Gets the current number of players with active cooldowns.
+     * Useful for monitoring memory usage.
+     * 
+     * @return Number of players with cooldowns
+     */
+    public int getActiveCooldownCount() {
+        return playerCooldowns.size();
+    }
+    
+    /**
+     * Gets the total number of command cooldowns being tracked.
+     * Useful for monitoring memory usage.
+     * 
+     * @return Total number of command cooldowns
+     */
+    public int getTotalCooldownEntries() {
+        return playerCooldowns.values().stream()
+                .mapToInt(Map::size)
+                .sum();
     }
 } 

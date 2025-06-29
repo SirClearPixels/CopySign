@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
 import de.tr7zw.nbtapi.NBTItem;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.inventory.ItemStack;
@@ -15,6 +16,7 @@ import org.bukkit.DyeColor;
 import org.bukkit.block.sign.Side;
 import java.util.List;
 import us.ironcladnetwork.copySign.Lang.Lang;
+import us.ironcladnetwork.copySign.Util.SignValidationUtil;
 
 /**
  * Event listener for handling sign placement with copied NBT data.
@@ -52,7 +54,7 @@ public class SignPlaceListener implements Listener {
             return;
 
         ItemStack itemStack = event.getItemInHand();
-        if (itemStack == null)
+        if (itemStack == null || itemStack.getType() == Material.AIR)
             return;
 
         NBTItem nbtItem = new NBTItem(itemStack);
@@ -70,7 +72,7 @@ public class SignPlaceListener implements Listener {
         }
         
         // Check if the sign type is allowed for pasting
-        if (!isSignTypeAllowed(itemStack.getType().name())) {
+        if (!SignValidationUtil.isSignTypeAllowed(itemStack.getType().name())) {
             player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_PASTE.getWithPrefix());
             event.setCancelled(true); // Cancel the sign placement
             return;
@@ -117,21 +119,4 @@ public class SignPlaceListener implements Listener {
         CopySign.getCooldownManager().recordCommandUse(player, "paste");
     }
     
-    /**
-     * Checks if a sign type is allowed to be copied/pasted based on the configuration.
-     * 
-     * @param signType The material name of the sign (e.g., "OAK_SIGN", "BIRCH_HANGING_SIGN")
-     * @return true if the sign type is allowed, false otherwise
-     */
-    private boolean isSignTypeAllowed(String signType) {
-        List<String> allowedTypes = CopySign.getInstance().getConfig().getStringList("sign-types.allowed");
-        
-        // If the list is empty, allow all sign types (default behavior)
-        if (allowedTypes.isEmpty()) {
-            return true;
-        }
-        
-        // Check if the specific sign type is in the allowed list
-        return allowedTypes.contains(signType);
-    }
 } 

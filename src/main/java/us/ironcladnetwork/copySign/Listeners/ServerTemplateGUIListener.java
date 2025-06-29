@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -64,7 +65,7 @@ public class ServerTemplateGUIListener implements Listener {
         // Handle create new template button (admin only)
         if (clickedItem.getType() == Material.EMERALD && isAdmin) {
             ItemStack heldItem = player.getInventory().getItemInMainHand();
-            if (heldItem == null || !heldItem.getType().name().endsWith("_SIGN")) {
+            if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
                 player.sendMessage(Lang.PREFIX.get() + "&cYou must be holding a sign with copied data!");
                 return;
             }
@@ -87,14 +88,14 @@ public class ServerTemplateGUIListener implements Listener {
         if (clickedItem.getType().name().endsWith("_SIGN")) {
             String templateName = ChatColor.stripColor(displayName);
             
-            if (event.isRightClick() && isAdmin) {
+            if (event.getClick() == ClickType.RIGHT && isAdmin) {
                 // Delete template
                 if (templateManager.deleteTemplate(player, templateName)) {
                     // Refresh GUI
                     Map<String, SavedSignData> templates = templateManager.getAllTemplates();
                     ServerTemplateGUI.open(player, templates, true);
                 }
-            } else if (event.isLeftClick()) {
+            } else if (event.getClick() == ClickType.LEFT) {
                 // Load template
                 SavedSignData templateData = templateManager.getTemplate(templateName);
                 if (templateData == null) {
@@ -103,7 +104,7 @@ public class ServerTemplateGUIListener implements Listener {
                 }
                 
                 ItemStack heldItem = player.getInventory().getItemInMainHand();
-                if (heldItem == null || !heldItem.getType().name().endsWith("_SIGN")) {
+                if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
                     player.sendMessage(Lang.MUST_HOLD_SIGN.getWithPrefix());
                     return;
                 }
@@ -112,8 +113,9 @@ public class ServerTemplateGUIListener implements Listener {
                 boolean heldHanging = heldItem.getType().name().contains("HANGING_SIGN");
                 boolean templateHanging = templateData.getSignType().equalsIgnoreCase("hanging");
                 if (heldHanging != templateHanging) {
-                    player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix("%s", 
-                        heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
+                    player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
+                        "%held%", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get(),
+                        "%target%", templateHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
                     return;
                 }
                 

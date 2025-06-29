@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Manager for handling individual player CopySign feature toggle states.
@@ -149,6 +150,63 @@ public class CopySignToggleManager {
     }
 
     /**
+     * Asynchronously saves the current player toggle configuration to prevent main thread blocking.
+     * This method creates a backup and saves the file in a separate thread to avoid server lag.
+     * 
+     * @param player The player whose toggle state was changed (for error reporting)
+     * @param enabled The new toggle state (for debug logging)
+     */
+    private void saveConfigAsync(Player player, boolean enabled) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Create backup before saving (async)
+                ErrorHandler.createBackup(playersFile);
+                
+                // Validate config before saving
+                if (playersConfig == null) {
+                    throw new IllegalStateException("Configuration is null, cannot save");
+                }
+                
+                // Save the configuration file
+                playersConfig.save(playersFile);
+                
+                ErrorHandler.debug("Asynchronously saved toggle state for " + player.getName() + " to " + enabled);
+                
+            } catch (IOException e) {
+                ErrorHandler.handleFileError("saving player toggle state", playersFile, e, player);
+            } catch (Exception e) {
+                ErrorHandler.handleGeneralError("saving player toggle configuration async", e, player);
+            }
+        });
+    }
+
+    /**
+     * Synchronously saves the configuration.
+     * Used during plugin shutdown to ensure data is saved before disable.
+     * 
+     * @return true if save was successful, false otherwise
+     */
+    public boolean saveConfigSync() {
+        try {
+            // Create backup before saving
+            ErrorHandler.createBackup(playersFile);
+            
+            // Save the configuration file
+            playersConfig.save(playersFile);
+            
+            ErrorHandler.debug("Synchronously saved player toggle states");
+            return true;
+            
+        } catch (IOException e) {
+            ErrorHandler.handleFileError("saving player toggle states", playersFile, e, null);
+            return false;
+        } catch (Exception e) {
+            ErrorHandler.handleGeneralError("saving player toggle configuration sync", e, null);
+            return false;
+        }
+    }
+
+    /**
      * Checks if CopySign is enabled for the given player.
      * Uses the config default for new players.
      *
@@ -156,7 +214,7 @@ public class CopySignToggleManager {
      * @return true if CopySign is enabled, false otherwise.
      */
     public boolean isEnabled(Player player) {
-        boolean defaultEnabled = plugin.getConfig().getBoolean("general.default-enabled", true);
+        boolean defaultEnabled = plugin.getConfigBoolean("general.default-enabled", true);
         return playerStates.getOrDefault(player.getUniqueId(), defaultEnabled);
     }
 
@@ -173,17 +231,13 @@ public class CopySignToggleManager {
                 return;
             }
             
+            // Update in-memory state immediately (synchronous for instant response)
             playerStates.put(player.getUniqueId(), enabled);
             playersConfig.set("players." + player.getUniqueId().toString(), enabled);
             
-            // Create backup before saving
-            ErrorHandler.createBackup(playersFile);
-            playersConfig.save(playersFile);
+            // Save to file asynchronously to prevent main thread blocking
+            saveConfigAsync(player, enabled);
             
-            ErrorHandler.debug("Updated toggle state for " + player.getName() + " to " + enabled);
-            
-        } catch (IOException e) {
-            ErrorHandler.handleFileError("saving player toggle state", playersFile, e, player);
         } catch (Exception e) {
             ErrorHandler.handleGeneralError("setting player toggle state", e, player);
         }
