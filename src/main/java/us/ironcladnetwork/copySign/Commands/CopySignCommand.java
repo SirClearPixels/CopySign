@@ -187,7 +187,6 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 signLibraryManager.saveSign(player, saveName, heldItemForSave);
-                player.sendMessage(Lang.SIGN_SAVED_SUCCESSFULLY.getWithPrefix());
                 // Record command usage
                 us.ironcladnetwork.copySign.CopySign.getCooldownManager().recordCommandUse(player, "save");
                 break;
