@@ -12,6 +12,15 @@ import us.ironcladnetwork.copySign.Util.CooldownManager;
 import us.ironcladnetwork.copySign.Util.ServerTemplateManager;
 import us.ironcladnetwork.copySign.Util.SignDataCache;
 import us.ironcladnetwork.copySign.Listeners.SignLibraryGUIListener;
+import us.ironcladnetwork.copySign.Util.ConfirmationManager;
+import us.ironcladnetwork.copySign.Util.ConfigManager;
+import us.ironcladnetwork.copySign.Util.UpdateChecker;
+import us.ironcladnetwork.copySign.Util.DebugLogger;
+import us.ironcladnetwork.copySign.Integration.WorldGuardIntegration;
+import us.ironcladnetwork.copySign.Util.SoundManager;
+import us.ironcladnetwork.copySign.Util.MetricsManager;
+import us.ironcladnetwork.copySign.Util.ConfigValidator;
+import us.ironcladnetwork.copySign.Util.ConfigMigrator;
 
 import org.bukkit.configuration.ConfigurationSection;
 import java.util.HashMap;
@@ -59,6 +68,18 @@ public final class CopySign extends JavaPlugin {
     private final ReadWriteLock configLock = new ReentrantReadWriteLock();
     // Field for managing server-wide templates
     private ServerTemplateManager serverTemplateManager;
+    // Field for managing confirmation prompts
+    private static ConfirmationManager confirmationManager;
+    // Field for centralized configuration management
+    private ConfigManager configManager;
+    // Field for debug logging
+    private DebugLogger debugLogger;
+    // Field for WorldGuard integration
+    private WorldGuardIntegration worldGuardIntegration;
+    // Field for sound manager
+    private SoundManager soundManager;
+    // Field for metrics manager
+    private MetricsManager metricsManager;
 
     /**
      * Initializes the plugin when it is enabled.
@@ -95,13 +116,51 @@ public final class CopySign extends JavaPlugin {
         cooldownManager = new CooldownManager(this);
         // Initialize the server template manager
         serverTemplateManager = new ServerTemplateManager(getDataFolder(), this);
+        // Initialize the confirmation manager
+        confirmationManager = new ConfirmationManager(this);
         
         // Load messages (no lock needed during startup)
         reloadConfig();
+        
+        // Perform configuration migration if needed
+        ConfigMigrator migrator = new ConfigMigrator(this);
+        if (migrator.migrate()) {
+            // Reload config after migration
+            reloadConfig();
+        }
+        
         Lang.init(this);
         
+        // Initialize configuration manager
+        configManager = new ConfigManager(this);
+        
+        // Perform comprehensive configuration validation
+        ConfigValidator validator = new ConfigValidator(this);
+        if (!validator.validate()) {
+            getLogger().severe("Critical configuration errors detected! Please fix them and restart the server.");
+            // Still continue loading but with warnings
+        }
+        
+        // Run the basic validation too
+        configManager.validateConfiguration();
+        
+        // Initialize debug logger
+        debugLogger = new DebugLogger(this);
+        if (configManager.isDebugEnabled()) {
+            getLogger().info("Debug mode is enabled. Additional logging will be shown.");
+        }
+        
+        // Initialize WorldGuard integration
+        worldGuardIntegration = new WorldGuardIntegration(this);
+        
+        // Initialize sound manager
+        soundManager = new SoundManager(this);
+        
+        // Initialize metrics manager
+        metricsManager = new MetricsManager(this);
+        
         // Initialize bStats metrics if enabled in config
-        if (getConfig().getBoolean("metrics.enabled", true)) {
+        if (configManager.isMetricsEnabled()) {
             int pluginId = 26118;
             Metrics metrics = new Metrics(this, pluginId);
             
@@ -129,6 +188,56 @@ public final class CopySign extends JavaPlugin {
                 else if (maxSigns <= 100) return "51-100";
                 else return "100+";
             }));
+            
+            // Track server templates feature
+            metrics.addCustomChart(new SimplePie("server_templates_enabled", () -> 
+                configManager.isServerTemplatesEnabled() ? "Enabled" : "Disabled"
+            ));
+            
+            // Track WorldGuard integration
+            metrics.addCustomChart(new SimplePie("worldguard_integration", () -> {
+                if (!configManager.respectWorldGuard()) return "Disabled in Config";
+                else if (worldGuardIntegration.isEnabled()) return "Active";
+                else return "Not Found";
+            }));
+            
+            // Track sound system usage
+            metrics.addCustomChart(new SimplePie("sound_effects", () -> 
+                soundManager.isEnabled() ? "Enabled" : "Disabled"
+            ));
+            
+            // Track sneak requirements
+            metrics.addCustomChart(new SimplePie("sneak_requirements", () -> {
+                boolean copy = configManager.requireSneakToCopy();
+                boolean paste = configManager.requireSneakToPaste();
+                if (copy && paste) return "Both";
+                else if (copy) return "Copy Only";
+                else if (paste) return "Paste Only";
+                else return "None";
+            }));
+            
+            // Track auto-save interval
+            metrics.addCustomChart(new SimplePie("auto_save_interval", () -> {
+                int interval = configManager.getAutoSaveInterval();
+                if (interval <= 0) return "Disabled";
+                else if (interval <= 5) return "1-5 minutes";
+                else if (interval <= 10) return "6-10 minutes";
+                else if (interval <= 30) return "11-30 minutes";
+                else return "30+ minutes";
+            }));
+            
+            // Track update checking
+            metrics.addCustomChart(new SimplePie("update_checking", () -> 
+                configManager.checkForUpdates() ? "Enabled" : "Disabled"
+            ));
+            
+            // Track debug mode usage
+            metrics.addCustomChart(new SimplePie("debug_mode", () -> 
+                configManager.isDebugEnabled() ? "Enabled" : "Disabled"
+            ));
+            
+            // Add advanced metrics
+            metricsManager.setupAdvancedMetrics(metrics);
             
             getLogger().info("bStats metrics enabled. Thank you for helping improve CopySign!");
         }
@@ -178,6 +287,42 @@ public final class CopySign extends JavaPlugin {
         getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
             SignDataCache.cleanupExpiredEntries();
         }, 6000L, 6000L); // 6000 ticks = 5 minutes
+        
+        // Check for updates if enabled
+        if (configManager.checkForUpdates()) {
+            new UpdateChecker(this).checkForUpdate(latestVersion -> {
+                // Callback is handled inside UpdateChecker
+            });
+        }
+        
+        // Start auto-save task if enabled
+        int autoSaveInterval = configManager.getAutoSaveInterval();
+        if (autoSaveInterval > 0) {
+            long intervalTicks = autoSaveInterval * 60L * 20L; // Convert minutes to ticks
+            getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+                long startTime = System.currentTimeMillis();
+                
+                // Perform saves asynchronously
+                boolean librarySuccess = signLibraryManager.saveConfigSync();
+                boolean toggleSuccess = toggleManager.saveConfigSync();
+                
+                long timeTaken = System.currentTimeMillis() - startTime;
+                
+                // Log results on main thread
+                getServer().getScheduler().runTask(this, () -> {
+                    if (librarySuccess && toggleSuccess) {
+                        debugLogger.debug("Auto-save completed successfully");
+                        debugLogger.debugPerformance("Auto-save", timeTaken);
+                    } else {
+                        getLogger().warning("Auto-save encountered errors - Library: " + 
+                            (librarySuccess ? "OK" : "FAILED") + ", Toggles: " + 
+                            (toggleSuccess ? "OK" : "FAILED"));
+                    }
+                });
+            }, intervalTicks, intervalTicks);
+            
+            getLogger().info("Auto-save enabled - saving every " + autoSaveInterval + " minutes");
+        }
     }
 
     /**
@@ -192,6 +337,11 @@ public final class CopySign extends JavaPlugin {
     public void onDisable() {
         // Clear the sign data cache on shutdown
         SignDataCache.clear();
+        
+        // Clear any pending confirmations
+        if (confirmationManager != null) {
+            confirmationManager.clearAll();
+        }
         
         // Save all manager data synchronously to prevent data loss
         getLogger().info("Saving plugin data...");
@@ -233,12 +383,48 @@ public final class CopySign extends JavaPlugin {
             // Reload the main configuration
             reloadConfig();
             
+            // Validate the reloaded configuration
+            ConfigValidator validator = new ConfigValidator(this);
+            if (!validator.validate()) {
+                getLogger().severe("Configuration errors detected after reload!");
+            }
+            
             // Reinitialize language messages with new config
             Lang.init(this);
+            
+            // Reload configuration manager cache
+            if (configManager != null) {
+                configManager.reloadCache();
+                configManager.validateConfiguration();
+            }
+            
+            // Reinitialize debug logger with new settings
+            if (debugLogger != null) {
+                debugLogger = new DebugLogger(this);
+                if (configManager.isDebugEnabled()) {
+                    getLogger().info("Debug mode is enabled after reload.");
+                }
+            }
             
             // Reload server template manager
             if (serverTemplateManager != null) {
                 serverTemplateManager.reload();
+            }
+            
+            // Reload WorldGuard integration
+            if (worldGuardIntegration != null) {
+                worldGuardIntegration.reload();
+            }
+            
+            // Reload sound manager
+            if (soundManager != null) {
+                soundManager.reload();
+            }
+            
+            // Clear toggle cache if caching is now disabled
+            if (toggleManager != null && !configManager.isCacheToggleStates()) {
+                toggleManager.clearCache();
+                getLogger().info("Toggle state caching disabled, cache cleared.");
             }
             
             getLogger().info("Plugin configuration reloaded successfully.");
@@ -393,5 +579,54 @@ public final class CopySign extends JavaPlugin {
      */
     public static ServerTemplateManager getServerTemplateManager() {
         return instance.serverTemplateManager;
+    }
+    
+    /**
+     * Gets the confirmation manager instance.
+     * @return The confirmation manager
+     */
+    public static ConfirmationManager getConfirmationManager() {
+        return confirmationManager;
+    }
+    
+    /**
+     * Gets the configuration manager instance.
+     * Provides centralized access to configuration values.
+     * @return The configuration manager
+     */
+    public ConfigManager getConfigManager() {
+        return configManager;
+    }
+    
+    /**
+     * Gets the debug logger instance.
+     * @return The debug logger
+     */
+    public DebugLogger getDebugLogger() {
+        return debugLogger;
+    }
+    
+    /**
+     * Gets the WorldGuard integration instance.
+     * @return The WorldGuard integration
+     */
+    public WorldGuardIntegration getWorldGuardIntegration() {
+        return worldGuardIntegration;
+    }
+    
+    /**
+     * Gets the sound manager instance.
+     * @return The sound manager
+     */
+    public SoundManager getSoundManager() {
+        return soundManager;
+    }
+    
+    /**
+     * Gets the metrics manager instance.
+     * @return The metrics manager
+     */
+    public MetricsManager getMetricsManager() {
+        return metricsManager;
     }
 }

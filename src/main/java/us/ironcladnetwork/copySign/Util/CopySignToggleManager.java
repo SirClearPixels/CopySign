@@ -215,6 +215,16 @@ public class CopySignToggleManager {
      */
     public boolean isEnabled(Player player) {
         boolean defaultEnabled = plugin.getConfigBoolean("general.default-enabled", true);
+        
+        // If caching is disabled, always load from config
+        if (!plugin.getConfigManager().isCacheToggleStates()) {
+            if (playersConfig.contains("players." + player.getUniqueId().toString())) {
+                return playersConfig.getBoolean("players." + player.getUniqueId().toString(), defaultEnabled);
+            }
+            return defaultEnabled;
+        }
+        
+        // Use cached value
         return playerStates.getOrDefault(player.getUniqueId(), defaultEnabled);
     }
 
@@ -253,5 +263,37 @@ public class CopySignToggleManager {
         boolean newState = !isEnabled(player);
         setCopySignEnabled(player, newState);
         return newState;
+    }
+    
+    /**
+     * Clears cached toggle state for a player.
+     * Called when a player quits to free memory if caching is enabled.
+     *
+     * @param player The player whose cache to clear
+     */
+    public void clearPlayerCache(Player player) {
+        if (plugin.getConfigManager().isCacheToggleStates()) {
+            playerStates.remove(player.getUniqueId());
+            ErrorHandler.debug("Cleared toggle cache for player: " + player.getName());
+        }
+    }
+    
+    /**
+     * Gets the current size of the toggle state cache.
+     * Useful for monitoring memory usage.
+     *
+     * @return Number of players in cache
+     */
+    public int getCacheSize() {
+        return playerStates.size();
+    }
+    
+    /**
+     * Clears the entire cache.
+     * Used during reload or when caching is disabled.
+     */
+    public void clearCache() {
+        playerStates.clear();
+        ErrorHandler.debug("Cleared entire toggle state cache");
     }
 }

@@ -64,6 +64,13 @@ public class SignChangeListener implements Listener {
             sign.getSide(Side.FRONT).setGlowingText(data.isGlowing());
             sign.getSide(Side.BACK).setGlowingText(data.isGlowing());
             sign.update();
+            
+            // Play paste sound after successful paste
+            if (event.getPlayer() != null) {
+                CopySign.getInstance().getSoundManager().playPasteSound(event.getPlayer());
+                // Record metrics
+                CopySign.getInstance().getMetricsManager().recordPasteOperation(event.getPlayer());
+            }
         });
 
         // Remove the data from the cache since it has now been applied.

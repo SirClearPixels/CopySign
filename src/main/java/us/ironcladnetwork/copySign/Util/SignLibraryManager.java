@@ -206,20 +206,20 @@ public class SignLibraryManager {
             }
             
             if (!ErrorHandler.isValidFileName(name, 32)) {
-                player.sendMessage(Lang.PREFIX.get() + "&cInvalid sign name. Use only letters, numbers, hyphens, and underscores (max 32 characters).");
+                player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
                 return;
             }
             
             // Validate that the signItem is not null and is of a sign type.
             if (signItem == null || signItem.getType() == Material.AIR || !signItem.getType().name().endsWith("_SIGN")) {
-                player.sendMessage(Lang.PREFIX.get() + "&cInvalid sign item.");
+                player.sendMessage(Lang.INVALID_SIGN_ITEM_ERROR.getWithPrefix());
                 return;
             }
             
             NBTItem nbtItem = new NBTItem(signItem);
             // Ensure required NBT tags are present.
             if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack")) {
-                player.sendMessage(Lang.PREFIX.get() + "&cSign does not contain the required data.");
+                player.sendMessage(Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
                 return;
             }
             
@@ -308,8 +308,14 @@ public class SignLibraryManager {
             saveConfigAsync(success -> {
                 if (success) {
                     player.sendMessage(Lang.SIGN_SAVED_SUCCESSFULLY.getWithPrefix());
+                    // Play save sound effect
+                    CopySign.getInstance().getSoundManager().playSaveSound(player);
+                    // Record metrics
+                    CopySign.getInstance().getMetricsManager().recordSaveOperation(player);
                 } else {
                     player.sendMessage(Lang.PREFIX.get() + "§cFailed to save sign. Please try again.");
+                    // Play error sound effect
+                    CopySign.getInstance().getSoundManager().playErrorSound(player);
                 }
             });
             

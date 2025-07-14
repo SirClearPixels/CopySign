@@ -39,7 +39,7 @@ public class CooldownManager {
             return true;
         }
         
-        int cooldownSeconds = plugin.getConfigInt("commands.cooldowns." + command, 0);
+        int cooldownSeconds = plugin.getConfigInt("cooldowns." + command, 0);
         
         // If cooldown is 0 or negative, no cooldown applies
         if (cooldownSeconds <= 0) {
@@ -85,7 +85,7 @@ public class CooldownManager {
      * @return remaining cooldown in seconds, or 0 if no cooldown
      */
     public int getRemainingCooldown(Player player, String command) {
-        int cooldownSeconds = plugin.getConfigInt("commands.cooldowns." + command, 0);
+        int cooldownSeconds = plugin.getConfigInt("cooldowns." + command, 0);
         
         if (cooldownSeconds <= 0) {
             return 0;
@@ -123,7 +123,7 @@ public class CooldownManager {
     public void sendCooldownMessage(Player player, String command) {
         int remaining = getRemainingCooldown(player, command);
         String timeUnit = remaining == 1 ? "second" : "seconds";
-        player.sendMessage(Lang.PREFIX.get() + "&cYou must wait " + remaining + " " + timeUnit + " before using that command again.");
+        player.sendMessage(Lang.COOLDOWN_MESSAGE.formatWithPrefix("%time%", String.valueOf(remaining), "%unit%", timeUnit));
     }
     
     /**

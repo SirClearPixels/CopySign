@@ -64,6 +64,12 @@ public class SignPlaceListener implements Listener {
         
         Player player = event.getPlayer();
         
+        // Check if sneaking is required for pasting (from config)
+        if (CopySign.getInstance().getConfigManager().requireSneakToPaste() && !player.isSneaking()) {
+            // Don't paste the sign data if sneaking is required but player isn't sneaking
+            return;
+        }
+        
         // Check cooldown for paste operation
         if (!CopySign.getCooldownManager().canUseCommand(player, "paste")) {
             CopySign.getCooldownManager().sendCooldownMessage(player, "paste");
@@ -74,6 +80,13 @@ public class SignPlaceListener implements Listener {
         // Check if the sign type is allowed for pasting
         if (!SignValidationUtil.isSignTypeAllowed(itemStack.getType().name())) {
             player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_PASTE.getWithPrefix());
+            event.setCancelled(true); // Cancel the sign placement
+            return;
+        }
+        
+        // Check WorldGuard protection if enabled
+        if (!CopySign.getInstance().getWorldGuardIntegration().canPasteSign(player, block.getLocation())) {
+            player.sendMessage(Lang.WORLDGUARD_PASTE_DENIED.getWithPrefix());
             event.setCancelled(true); // Cancel the sign placement
             return;
         }

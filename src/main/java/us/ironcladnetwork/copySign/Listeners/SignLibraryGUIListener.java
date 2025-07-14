@@ -1,15 +1,21 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import de.tr7zw.nbtapi.NBTItem;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import us.ironcladnetwork.copySign.Lang.Lang;
 import us.ironcladnetwork.copySign.Util.SignLibraryGUI;
 import us.ironcladnetwork.copySign.Util.SignLibraryManager;
 import us.ironcladnetwork.copySign.Util.SavedSignData;
+import us.ironcladnetwork.copySign.Util.DesignConstants;
+import us.ironcladnetwork.copySign.Util.SignLoreBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +59,7 @@ public class SignLibraryGUIListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         // Check if the inventory view is the Sign Library GUI by its title.
-        if (event.getView().getTitle() == null || !event.getView().getTitle().startsWith("Sign Library"))
+        if (event.getView().getTitle() == null || !event.getView().getTitle().contains("Sign Library"))
             return;
 
         // Cancel all clicks to prevent the player from taking items.
@@ -69,7 +75,7 @@ public class SignLibraryGUIListener implements Listener {
         Player player = (Player) event.getWhoClicked();
 
         // Exit button: close the inventory.
-        if (clickedItem.getType() == Material.BARRIER && "Exit".equals(displayName)) {
+        if (clickedItem.getType() == Material.BARRIER) {
             player.closeInventory();
             return;
         }
@@ -78,10 +84,10 @@ public class SignLibraryGUIListener implements Listener {
         if (clickedItem.getType() == Material.ARROW) {
             // Parse current page from the inventory title.
             int currentPage = parseCurrentPage(event.getView().getTitle());
-            if ("Previous Page".equals(displayName)) {
+            if (displayName.contains("Previous Page")) {
                 int newPage = currentPage - 1; // currentPage is 1-indexed
                 openPageForPlayer(player, newPage);
-            } else if ("Next Page".equals(displayName)) {
+            } else if (displayName.contains("Next Page")) {
                 int newPage = currentPage + 1;
                 openPageForPlayer(player, newPage);
             }
@@ -89,12 +95,98 @@ public class SignLibraryGUIListener implements Listener {
         }
 
         // Handle a click on a sign entry item.
-        if (clickedItem.getType() == Material.OAK_SIGN || clickedItem.getType() == Material.OAK_HANGING_SIGN) {
-            // Expect the display name format "Sign: <name>".
-            if (displayName.startsWith("Sign: ")) {
-                String signName = displayName.substring(6); // Remove "Sign: " prefix.
-                // Inform the player how to load the sign.
-                player.sendMessage("To load sign \"" + signName + "\", use /copysign load " + signName);
+        if (clickedItem.getType().name().endsWith("_SIGN")) {
+            if (event.getClick() == ClickType.LEFT) {
+                // Extract sign name from lore (should be at index 1 after the top separator)
+                List<String> lore = meta.getLore();
+                String signName = null;
+                if (lore != null && lore.size() > 1) {
+                    // The name is on line index 1, after SEPARATOR_TOP
+                    String nameLine = lore.get(1);
+                    signName = ChatColor.stripColor(nameLine).trim();
+                }
+                
+                if (signName == null) {
+                    player.sendMessage(Lang.SIGN_NAME_NOT_IDENTIFIED.getWithPrefix());
+                    return;
+                }
+                
+                // Load sign data
+                SavedSignData signData = signLibraryManager.getSign(player, signName);
+                if (signData == null) {
+                    player.sendMessage(Lang.SIGN_NOT_FOUND.getWithPrefix());
+                    return;
+                }
+                
+                ItemStack heldItem = player.getInventory().getItemInMainHand();
+                if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
+                    player.sendMessage(Lang.MUST_HOLD_SIGN.getWithPrefix());
+                    return;
+                }
+                
+                // Check sign type compatibility
+                boolean heldHanging = heldItem.getType().name().contains("HANGING_SIGN");
+                boolean savedHanging = signData.getSignType().equalsIgnoreCase("hanging");
+                if (heldHanging != savedHanging) {
+                    player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
+                        "%held%", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get(),
+                        "%target%", savedHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
+                    return;
+                }
+                
+                // Apply sign data to held sign
+                NBTItem nbtItem = new NBTItem(heldItem);
+                
+                // Clear any existing NBT data first
+                nbtItem.removeKey("copiedSignFront");
+                nbtItem.removeKey("copiedSignBack");
+                nbtItem.removeKey("copiedSignFrontColor");
+                nbtItem.removeKey("copiedSignBackColor");
+                nbtItem.removeKey("signGlowing");
+                nbtItem.removeKey("frontGlowing");
+                nbtItem.removeKey("backGlowing");
+                nbtItem.removeKey("signType");
+                
+                nbtItem.setString("copiedSignFront", String.join("\n", signData.getFront()));
+                nbtItem.setString("copiedSignBack", String.join("\n", signData.getBack()));
+                nbtItem.setString("copiedSignFrontColor", signData.getFrontColor());
+                nbtItem.setString("copiedSignBackColor", signData.getBackColor());
+                
+                // Store per-side glow states
+                nbtItem.setBoolean("frontGlowing", signData.isFrontGlowing());
+                nbtItem.setBoolean("backGlowing", signData.isBackGlowing());
+                nbtItem.setBoolean("signGlowing", signData.isGlowing()); // Legacy compatibility
+                
+                nbtItem.setString("signType", signData.getSignType());
+                
+                // Update item with premium lore
+                ItemStack updatedItem = nbtItem.getItem();
+                ItemMeta updatedMeta = updatedItem.getItemMeta();
+                if (updatedMeta != null) {
+                    List<String> newLore = SignLoreBuilder.buildPremiumSignLore(
+                        signName,
+                        signData.getFront(),
+                        signData.getBack(),
+                        signData.getFrontColor(),
+                        signData.getBackColor(),
+                        signData.isFrontGlowing(),
+                        signData.isBackGlowing(),
+                        signData.getSignType(),
+                        "Library"
+                    );
+                    
+                    updatedMeta.setLore(newLore);
+                    updatedItem.setItemMeta(updatedMeta);
+                }
+                
+                player.getInventory().setItemInMainHand(updatedItem);
+                player.closeInventory();
+                player.sendMessage(Lang.SIGN_LOADED_TO_HELD.formatWithPrefix("%name%", signName));
+                
+                // Send enhanced mixed glow state warning if applicable
+                if (signData.hasMixedGlowStates()) {
+                    player.sendMessage(DesignConstants.createMixedGlowWarning());
+                }
             }
         }
     }

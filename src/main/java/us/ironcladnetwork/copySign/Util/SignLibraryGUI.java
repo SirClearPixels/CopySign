@@ -62,8 +62,9 @@ public class SignLibraryGUI {
         int totalPages = (int) Math.ceil(entries.size() / (double) ENTRIES_PER_PAGE);
         if (totalPages < 1)
             totalPages = 1;
-        // Title includes the current page (1-indexed) and total pages.
-        Inventory inv = Bukkit.createInventory(null, INVENTORY_SIZE, "Sign Library (Page " + (page + 1) + "/" + totalPages + ")");
+        // Premium title with enhanced formatting
+        String title = "§lSign Library (Page " + (page + 1) + "/" + totalPages + ")";        
+        Inventory inv = Bukkit.createInventory(null, INVENTORY_SIZE, title);
 
         // Populate the top 45 slots with saved sign items.
         int start = page * ENTRIES_PER_PAGE;
@@ -78,42 +79,23 @@ public class SignLibraryGUI {
             ItemStack signItem = new ItemStack(material);
             ItemMeta meta = signItem.getItemMeta();
             if (meta == null) continue; // Skip this item if meta is null
-            // Set the display name to include the saved sign's key.
-            meta.setDisplayName("Sign: " + signName);
-            List<String> lore = new ArrayList<>();
-            lore.add("§f§l[§b§lCopied Sign§f§l]");
-
-            // Handle front side
-            String[] frontLines = data.getFront();
-            boolean hasFrontData = false;
-            for (int j = 0; j < frontLines.length; j++) {
-                if (!frontLines[j].isEmpty()) {
-                    if (!hasFrontData) {
-                        lore.add("§f§lFront:");
-                        lore.add("§f§lColor: " + data.getFrontColor());
-                        hasFrontData = true;
-                    }
-                    lore.add("§f§lLine " + (j + 1) + ": §f\"§b" + frontLines[j] + "§f\"");
-                }
-            }
-
-            // Handle back side
-            String[] backLines = data.getBack();
-            boolean hasBackData = false;
-            for (int j = 0; j < backLines.length; j++) {
-                if (!backLines[j].isEmpty()) {
-                    if (!hasBackData) {
-                        lore.add("§f§lBack:");
-                        lore.add("§f§lColor: " + data.getBackColor());
-                        hasBackData = true;
-                    }
-                    lore.add("§f§lLine " + (j + 1) + ": §f\"§b" + backLines[j] + "§f\"");
-                }
-            }
-
-            // Always show glowing state
-            lore.add("§e§lGlowing: " + (data.isGlowing() ? "§aTrue" : "§cFalse"));
-
+            // Let Minecraft show natural item name, only add content identifier to lore
+            List<String> lore = SignLoreBuilder.buildPremiumSignLore(
+                signName, // ONLY content identifier - no physical item name duplication
+                data.getFront(),
+                data.getBack(),
+                data.getFrontColor(),
+                data.getBackColor(),
+                data.isFrontGlowing(),
+                data.isBackGlowing(),
+                data.getSignType(),
+                "Library"
+            );
+            
+            // Add load instructions
+            lore.add("");
+            lore.add(DesignConstants.INFORMATION + "• Click " + DesignConstants.SUPPORTING + "to load sign");
+            
             meta.setLore(lore);
             signItem.setItemMeta(meta);
             // Place item in the slot relative to the current page.
@@ -121,35 +103,48 @@ public class SignLibraryGUI {
         }
 
         // Set up navigation in the bottom row (slots 45 to 53).
+        // Premium navigation buttons with enhanced styling
         // Previous page button (if not on the first page) at slot 45.
         if (page > 0) {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta prevMeta = prev.getItemMeta();
             if (prevMeta != null) {
-                prevMeta.setDisplayName("Previous Page");
+                prevMeta.setDisplayName(DesignConstants.INFORMATION + "§l« Previous Page");
+                List<String> prevLore = new ArrayList<>();
+                prevLore.add(DesignConstants.SUPPORTING + "Go to page " + page);
+                prevMeta.setLore(prevLore);
                 prev.setItemMeta(prevMeta);
             }
             inv.setItem(45, prev);
         }
+        
         // Next page button (if more entries exist) at slot 49.
         if ((page + 1) * ENTRIES_PER_PAGE < entries.size()) {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta nextMeta = next.getItemMeta();
             if (nextMeta != null) {
-                nextMeta.setDisplayName("Next Page");
+                nextMeta.setDisplayName(DesignConstants.INFORMATION + "§lNext Page »");
+                List<String> nextLore = new ArrayList<>();
+                nextLore.add(DesignConstants.SUPPORTING + "Go to page " + (page + 2));
+                nextMeta.setLore(nextLore);
                 next.setItemMeta(nextMeta);
             }
             inv.setItem(49, next);
         }
-        // Exit button always at slot 53.
+        
+        // Premium exit button always at slot 53.
         ItemStack exit = new ItemStack(Material.BARRIER);
         ItemMeta exitMeta = exit.getItemMeta();
         if (exitMeta != null) {
-            exitMeta.setDisplayName("Exit");
+            exitMeta.setDisplayName(DesignConstants.WARNING_INACTIVE + "§lClose Library");
+            List<String> exitLore = new ArrayList<>();
+            exitLore.add(DesignConstants.SUPPORTING + "Return to game");
+            exitMeta.setLore(exitLore);
             exit.setItemMeta(exitMeta);
         }
         inv.setItem(53, exit);
 
         player.openInventory(inv);
     }
+    
 }

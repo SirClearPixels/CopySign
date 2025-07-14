@@ -18,7 +18,8 @@ public class SignValidationUtil {
      * @return true if the sign type is allowed, false otherwise
      */
     public static boolean isSignTypeAllowed(String signType) {
-        List<String> allowedTypes = CopySign.getInstance().getConfig().getStringList("sign-types.allowed");
+        // Use ConfigManager for thread-safe access
+        List<String> allowedTypes = CopySign.getInstance().getConfigManager().getAllowedSignTypes();
         
         // If the list is empty, allow all sign types (default behavior)
         if (allowedTypes.isEmpty()) {
@@ -40,8 +41,11 @@ public class SignValidationUtil {
             return false;
         }
         
+        // Get max length from config
+        int maxLength = CopySign.getInstance().getConfigManager().getMaxSignNameLength();
+        
         // Length validation
-        if (name.length() > 32) {
+        if (name.length() > maxLength) {
             return false;
         }
         
@@ -50,8 +54,16 @@ public class SignValidationUtil {
             return false;
         }
         
-        // Prevent reserved names
+        // Check against reserved names from config
+        List<String> reservedNames = CopySign.getInstance().getConfigManager().getReservedNames();
         String lowerName = name.toLowerCase();
+        
+        // Check if name is in reserved list
+        if (reservedNames.contains(lowerName)) {
+            return false;
+        }
+        
+        // Also prevent Windows reserved names
         if (lowerName.equals("con") || lowerName.equals("prn") || lowerName.equals("aux") || 
             lowerName.equals("nul") || lowerName.startsWith("com") || lowerName.startsWith("lpt")) {
             return false;

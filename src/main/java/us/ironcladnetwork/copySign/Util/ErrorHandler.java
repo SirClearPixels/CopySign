@@ -119,7 +119,7 @@ public class ErrorHandler {
         logger.log(Level.WARNING, errorMsg, e);
         
         if (player != null) {
-            player.sendMessage(Lang.PREFIX.get() + "&cOperation failed due to server load. Please try again in a moment.");
+            player.sendMessage(Lang.PERFORMANCE_ERROR_RETRY.getWithPrefix());
         }
     }
     

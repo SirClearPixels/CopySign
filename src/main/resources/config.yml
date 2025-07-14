@@ -1,190 +1,327 @@
 # CopySign Configuration
-# Version: 2.0
+# Version: 2.1.1
+# 
+# This configuration file controls all aspects of the CopySign plugin.
+# For support, visit: https://github.com/ClearPixel/CopySign
+#
+# Configuration Reload: Use /copysign reload to reload this configuration
+# Note: Some changes may require a server restart to take effect
 
-# General Settings
+# =============================================================================
+# GENERAL SETTINGS
+# =============================================================================
 general:
-  # Default state for new players (whether sign copying is enabled by default)
+  # Default toggle state for new players
+  # When a player first joins, should sign copying be enabled for them?
+  # Players can toggle this with /copysign on/off
   default-enabled: true
   
   # Check for plugin updates on startup
+  # This will check the Spigot/Bukkit resource page for newer versions
+  # Only console notifications, no in-game messages
   check-for-updates: true
   
   # Enable debug messages in console
+  # Useful for troubleshooting issues or monitoring plugin behavior
+  # Shows detailed information about sign operations, cache usage, etc.
   debug: false
+  
+  # Timeout for confirmation prompts (in seconds)
+  # Used when deleting templates or other destructive actions
+  # Players must confirm within this time or the action is cancelled
+  confirmation-timeout: 30
 
-# Feature Toggles
+# =============================================================================
+# FEATURE TOGGLES
+# =============================================================================
+# Enable or disable major plugin features
+# Disabling a feature completely prevents its use, regardless of permissions
 features:
-  # Enable/disable the entire sign copying feature
+  # Master toggle for sign copying functionality
+  # If false, players cannot copy signs even with permissions
   sign-copy: true
   
-  # Enable/disable the sign library feature
+  # Enable personal sign libraries
+  # Players can save and load sign designs
   sign-library: true
   
-  # Enable/disable color copying (requires copysign.copycolor permission)
+  # Allow copying of sign colors
+  # Still requires copysign.copycolor permission
   copy-colors: true
   
-  # Enable/disable glow state copying (requires copysign.copyglow permission)
+  # Allow copying of glow effect
+  # Still requires copysign.copyglow permission
   copy-glow: true
   
-  # Enable/disable sign type checking (hanging vs regular signs)
+  # Enforce sign type matching
+  # If true, hanging signs can only be copied to hanging signs, etc.
   strict-sign-type: true
   
-  # Enable/disable the clear command
+  # Enable the /copysign clear command
+  # Allows players to clear sign data from held items
   clear-command: true
   
-  # Enable/disable server-wide templates
+  # Enable server-wide sign templates
+  # Admins can create templates all players can use
   server-templates: true
 
-# Library Settings
+# =============================================================================
+# SIGN LIBRARY SETTINGS
+# =============================================================================
 library:
-  # Maximum number of signs a player can save in their library
-  # Set to -1 for unlimited
+  # Maximum signs each player can save
+  # Set to -1 for unlimited (requires copysign.library.unlimited permission)
+  # Players with copysign.library.limit.X can have X saved signs
   max-saved-signs: 50
   
   # Allow players to overwrite existing saved signs
+  # If false, players must delete before saving with same name
   allow-overwrite: false
   
-  # GUI settings for the sign library
+  # GUI Configuration
   gui:
-    # Title of the library GUI
+    # Title shown at the top of the library GUI
+    # Supports color codes with & symbol
     title: "&b&lSign Library"
     
-    # Number of rows in the GUI (1-6)
+    # Number of rows in the library GUI (1-6)
+    # Each row has 9 slots, so 6 rows = 54 slots
     rows: 6
     
-    # Show sign preview in item lore
+    # Show sign text preview in item lore
+    # Helps players identify signs without loading them
     show-preview: true
 
-# Command Settings
-commands:
-  # Enable/disable specific subcommands
-  enabled:
-    on: true
-    off: true
-    clear: true
-    save: true
-    load: true
-    delete: true
-    library: true
-    reload: true
-    templates: true
-  
-  # Cooldowns for commands (in seconds)
-  # Set to 0 to disable cooldown
-  cooldowns:
-    copy: 0
-    paste: 0
-    save: 2
-    load: 1
-    delete: 3
-    clear: 1
-    library: 1
+# =============================================================================
+# COOLDOWN SETTINGS
+# =============================================================================
+# Command cooldowns prevent spam and reduce server lag
+# All cooldowns are in seconds - set to 0 to disable
+# Players with copysign.cooldown.bypass permission skip all cooldowns
+cooldowns:
+  copy: 0     # Cooldown for copying signs (shift+punch)
+  paste: 0    # Cooldown for pasting signs (shift+place)
+  save: 2     # Cooldown for saving to library
+  load: 1     # Cooldown for loading from library
+  delete: 3   # Cooldown for deleting from library
+  clear: 1    # Cooldown for clearing sign data
+  library: 1  # Cooldown for opening library GUI
 
-# Sign Interaction Settings
+# =============================================================================
+# SIGN INTERACTION SETTINGS
+# =============================================================================
 sign-interaction:
-  # Require sneaking (shift) to copy a sign
+  # Require sneaking (shift key) to copy a sign
+  # If false, left-clicking a sign while holding a sign item will copy
   require-sneak-to-copy: true
   
-  # Require sneaking (shift) to paste a sign
+  # Require sneaking (shift key) to paste a sign
+  # If false, placing a sign will always paste if data exists
   require-sneak-to-paste: false
   
-  # Play sound effects
+  # Sound effects for various actions
+  # Set any sound to empty string "" to disable that sound
+  # Sound names from: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Sound.html
   sounds:
     enabled: true
-    copy: "BLOCK_NOTE_BLOCK_PLING"
-    paste: "BLOCK_NOTE_BLOCK_CHIME"
-    save: "ENTITY_EXPERIENCE_ORB_PICKUP"
-    error: "BLOCK_NOTE_BLOCK_BASS"
+    copy: "BLOCK_NOTE_BLOCK_PLING"        # When copying a sign
+    paste: "BLOCK_NOTE_BLOCK_CHIME"       # When pasting a sign
+    save: "ENTITY_EXPERIENCE_ORB_PICKUP"  # When saving to library
+    error: "BLOCK_NOTE_BLOCK_BASS"        # When an error occurs
 
-# Sign Type Restrictions
+# =============================================================================
+# SIGN TYPE RESTRICTIONS
+# =============================================================================
 sign-types:
-  # List of sign materials that can be copied
-  # Remove or add materials to restrict/allow specific sign types
+  # Control which sign types can be copied/pasted
+  # Remove entries to prevent copying specific sign types
+  # If empty, all sign types are allowed
   allowed:
+    # Regular standing/wall signs
     - "OAK_SIGN"
     - "OAK_WALL_SIGN"
-    - "OAK_HANGING_SIGN"
-    - "OAK_WALL_HANGING_SIGN"
     - "SPRUCE_SIGN"
     - "SPRUCE_WALL_SIGN"
-    - "SPRUCE_HANGING_SIGN"
-    - "SPRUCE_WALL_HANGING_SIGN"
     - "BIRCH_SIGN"
     - "BIRCH_WALL_SIGN"
-    - "BIRCH_HANGING_SIGN"
-    - "BIRCH_WALL_HANGING_SIGN"
     - "JUNGLE_SIGN"
     - "JUNGLE_WALL_SIGN"
-    - "JUNGLE_HANGING_SIGN"
-    - "JUNGLE_WALL_HANGING_SIGN"
     - "ACACIA_SIGN"
     - "ACACIA_WALL_SIGN"
-    - "ACACIA_HANGING_SIGN"
-    - "ACACIA_WALL_HANGING_SIGN"
     - "DARK_OAK_SIGN"
     - "DARK_OAK_WALL_SIGN"
-    - "DARK_OAK_HANGING_SIGN"
-    - "DARK_OAK_WALL_HANGING_SIGN"
     - "MANGROVE_SIGN"
     - "MANGROVE_WALL_SIGN"
-    - "MANGROVE_HANGING_SIGN"
-    - "MANGROVE_WALL_HANGING_SIGN"
     - "CHERRY_SIGN"
     - "CHERRY_WALL_SIGN"
-    - "CHERRY_HANGING_SIGN"
-    - "CHERRY_WALL_HANGING_SIGN"
     - "BAMBOO_SIGN"
     - "BAMBOO_WALL_SIGN"
-    - "BAMBOO_HANGING_SIGN"
-    - "BAMBOO_WALL_HANGING_SIGN"
     - "CRIMSON_SIGN"
     - "CRIMSON_WALL_SIGN"
-    - "CRIMSON_HANGING_SIGN"
-    - "CRIMSON_WALL_HANGING_SIGN"
     - "WARPED_SIGN"
     - "WARPED_WALL_SIGN"
+    # Hanging signs (1.20+)
+    - "OAK_HANGING_SIGN"
+    - "OAK_WALL_HANGING_SIGN"
+    - "SPRUCE_HANGING_SIGN"
+    - "SPRUCE_WALL_HANGING_SIGN"
+    - "BIRCH_HANGING_SIGN"
+    - "BIRCH_WALL_HANGING_SIGN"
+    - "JUNGLE_HANGING_SIGN"
+    - "JUNGLE_WALL_HANGING_SIGN"
+    - "ACACIA_HANGING_SIGN"
+    - "ACACIA_WALL_HANGING_SIGN"
+    - "DARK_OAK_HANGING_SIGN"
+    - "DARK_OAK_WALL_HANGING_SIGN"
+    - "MANGROVE_HANGING_SIGN"
+    - "MANGROVE_WALL_HANGING_SIGN"
+    - "CHERRY_HANGING_SIGN"
+    - "CHERRY_WALL_HANGING_SIGN"
+    - "BAMBOO_HANGING_SIGN"
+    - "BAMBOO_WALL_HANGING_SIGN"
+    - "CRIMSON_HANGING_SIGN"
+    - "CRIMSON_WALL_HANGING_SIGN"
     - "WARPED_HANGING_SIGN"
     - "WARPED_WALL_HANGING_SIGN"
 
-# Storage Settings
+# =============================================================================
+# STORAGE SETTINGS
+# =============================================================================
 storage:
   # Auto-save interval for player data (in minutes)
+  # Automatically saves all player libraries to disk
   # Set to 0 to only save on server shutdown
+  # Recommended: 5-10 minutes for active servers
   auto-save-interval: 5
   
-  # Backup settings
+  # Backup system for player data
+  # Creates copies of player data files to prevent data loss
   backup:
+    # Enable automatic backups
     enabled: true
-    # Keep this many backups
+    
+    # Maximum number of backups to keep per file
+    # Older backups are automatically deleted
     max-backups: 5
-    # Backup on startup
+    
+    # Create backup on server startup
+    # Useful for recovering from crashes
     on-startup: true
 
-# Protection Settings
+# =============================================================================
+# PROTECTION SETTINGS
+# =============================================================================
 protection:
-  # Prevent players from copying signs in protected regions
-  # Requires WorldGuard
+  # Integration with WorldGuard regions
+  # When enabled, respects WorldGuard region flags for sign copying
+  # Players need appropriate region permissions to copy/paste signs
   respect-worldguard: true
   
-  # Prevent players from copying signs they don't own
-  # Requires a protection plugin that tracks sign ownership
-  respect-sign-ownership: false
-
-# Performance Settings
-performance:
-  # Maximum number of signs that can be processed in a single operation
-  max-batch-size: 100
+  # Maximum characters allowed per line on signs
+  # Prevents exploits with extremely long text
+  # Minecraft default is 15 for most versions
+  max-sign-text-length: 15
   
-  # Cache player toggle states in memory
-  cache-toggle-states: true
+  # Validate sign text for inappropriate content
+  # Checks against server's configured blocked words/phrases
+  validate-text-content: true
+  
+  # Sign ownership protection (NOT YET IMPLEMENTED)
+  # Would prevent copying signs placed by other players
+  # Requires integration with protection plugins that track sign ownership
+  # respect-sign-ownership: false
 
-# Metrics Settings
+# =============================================================================
+# PERFORMANCE SETTINGS
+# =============================================================================
+performance:
+  # Cache player toggle states in memory
+  # Reduces file I/O by keeping active player states in RAM
+  # States are saved to disk on player quit and server shutdown
+  cache-toggle-states: true
+  
+  # Use asynchronous operations for file I/O
+  # Prevents server lag when saving/loading data
+  # Highly recommended for servers with many players
+  async-operations: true
+  
+  # Sign data cache expiry time (in seconds)
+  # How long to keep copied sign data in memory after copying
+  # Lower values save memory but may cause issues with slow players
+  cache-expiry-seconds: 30
+  
+  # Batch processing limit (NOT YET IMPLEMENTED)
+  # Would limit bulk operations to prevent server lag
+  # max-batch-size: 100
+
+# =============================================================================
+# TEMPLATE SETTINGS
+# =============================================================================
+templates:
+  # Require confirmation before deleting templates
+  # Prevents accidental deletion of server templates
+  require-confirmation-on-delete: true
+  
+  # Maximum length for template names
+  # Prevents excessively long names in GUIs
+  max-name-length: 32
+  
+  # Allow special characters in template names
+  # If false, only alphanumeric, spaces, and basic punctuation allowed
+  allow-special-characters: false
+  
+  # System template settings (PARTIALLY IMPLEMENTED)
+  # Hide system/default templates from tab completion
+  # Helps keep tab completion clean for players
+  hide-system-templates-in-tab: false
+  
+  # Prefix for system templates
+  # Templates starting with this are treated as system/default templates
+  system-template-prefix: "system_"
+
+# =============================================================================
+# VALIDATION SETTINGS
+# =============================================================================
+validation:
+  # Maximum length for saved sign names
+  # Applies to both player library and server templates
+  max-sign-name-length: 32
+  
+  # Reserved names that cannot be used
+  # Prevents conflicts with commands or special functions
+  reserved-names:
+    - "template"
+    - "system"
+    - "default"
+    - "confirm"
+    - "cancel"
+    - "list"
+    - "create"
+    - "delete"
+    - "use"
+  
+  # GUI size constraints
+  # Prevents invalid GUI sizes that would crash clients
+  gui-min-rows: 1
+  gui-max-rows: 6
+
+# =============================================================================
+# METRICS & ANALYTICS
+# =============================================================================
 metrics:
   # Enable bStats metrics collection
-  # This helps the developer understand how the plugin is being used
-  # No personal data is collected - only anonymous usage statistics
-  # You can view what data is collected at: https://bstats.org/plugin/bukkit/CopySign/26118
+  # Sends anonymous usage statistics to help improve the plugin
+  # Data collected:
+  #   - Server version, plugin version, player count
+  #   - Feature usage (which features are most used)
+  #   - Java version, server software, OS
+  # 
+  # NO personal data, IP addresses, or sign content is ever collected
+  # View collected data at: https://bstats.org/plugin/bukkit/CopySign
   enabled: true
 
-# Don't modify this unless you know what you're doing
-config-version: 1 
+# =============================================================================
+# ADVANCED SETTINGS
+# =============================================================================
+# Don't modify this unless instructed by plugin support
+config-version: 2

@@ -15,11 +15,41 @@ public class VersionCompatibility {
     
     /**
      * Safely gets the glow state of a sign, handling deprecated API usage.
+     * @deprecated Use isSignGlowingFront() and isSignGlowingBack() for per-side glow detection.
      * 
      * @param sign The sign to check
      * @return true if the sign is glowing, false otherwise
      */
+    @Deprecated
     public static boolean isSignGlowing(Sign sign) {
+        if (sign == null) {
+            return false;
+        }
+        
+        try {
+            if (IS_LEGACY_VERSION) {
+                // For older versions, use the deprecated method with suppression
+                @SuppressWarnings("deprecation")
+                boolean glowing = sign.isGlowingText();
+                return glowing;
+            } else {
+                // For newer versions, check front side (legacy compatibility)
+                return sign.getSide(Side.FRONT).isGlowingText();
+            }
+        } catch (NoSuchMethodError | AbstractMethodError e) {
+            // Fallback for unexpected API changes
+            ErrorHandler.debug("API compatibility issue when checking sign glow state: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Safely gets the glow state of the front side of a sign.
+     * 
+     * @param sign The sign to check
+     * @return true if the front side is glowing, false otherwise
+     */
+    public static boolean isSignGlowingFront(Sign sign) {
         if (sign == null) {
             return false;
         }
@@ -36,7 +66,36 @@ public class VersionCompatibility {
             }
         } catch (NoSuchMethodError | AbstractMethodError e) {
             // Fallback for unexpected API changes
-            ErrorHandler.debug("API compatibility issue when checking sign glow state: " + e.getMessage());
+            ErrorHandler.debug("API compatibility issue when checking front side glow state: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Safely gets the glow state of the back side of a sign.
+     * 
+     * @param sign The sign to check
+     * @return true if the back side is glowing, false otherwise
+     */
+    public static boolean isSignGlowingBack(Sign sign) {
+        if (sign == null) {
+            return false;
+        }
+        
+        try {
+            if (IS_LEGACY_VERSION) {
+                // For older versions, use the deprecated method with suppression
+                // Legacy versions don't support per-side glow, so return same as front
+                @SuppressWarnings("deprecation")
+                boolean glowing = sign.isGlowingText();
+                return glowing;
+            } else {
+                // For newer versions, use the side-specific API
+                return sign.getSide(Side.BACK).isGlowingText();
+            }
+        } catch (NoSuchMethodError | AbstractMethodError e) {
+            // Fallback for unexpected API changes
+            ErrorHandler.debug("API compatibility issue when checking back side glow state: " + e.getMessage());
             return false;
         }
     }

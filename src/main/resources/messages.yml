@@ -2,41 +2,199 @@
 # Use '&' for color codes
 
 messages:
+  # Plugin Branding
   PREFIX: "&8[&bCopySign&8] &7"
-  SIGN_COPIED: "&aSign text copied to your held sign!"
-  NO_PERMISSION: "&cYou don't have permission to do that!"
-  INVALID_SIGN: "&cThat's not a valid sign!"
-  MUST_HOLD_SIGN: "&cYou must be holding a sign to copy text!"
-  NO_PERMISSION_USE: "&cYou don't have permission to use CopySign!"
-  NO_PERMISSION_LIBRARY: "&cYou don't have permission to use the sign library!"
-  NO_PERMISSION_RELOAD: "&cYou don't have permission to reload the plugin!"
-  COMMAND_PLAYER_ONLY: "&cThis command is only available for players!"
-  COPYSIGN_USAGE: "&cUsage: /copysign <on|off|clear|save|load|delete|library|reload|templates>"
+  
+  # ========================================
+  # CORE PLUGIN MESSAGES
+  # ========================================
+  
+  # Basic Commands
+  COPYSIGN_USAGE: "&cUsage: /copysign <on|off|clear|save|load|delete|library|reload|templates|confirm|cancel>"
   COPYSIGN_ENABLED: "&aSign copy feature enabled."
   COPYSIGN_DISABLED: "&cSign copy feature disabled."
   PLUGIN_RELOADED: "&aPlugin configuration and messages reloaded successfully!"
+  COMMAND_PLAYER_ONLY: "&cThis command is only available for players!"
+  
+  # Main Command Help Messages
+  COMMAND_HELP_HEADER: "&6&lCopySign Commands:"
+  COMMAND_HELP_ON: "&e/copysign on &7- Enable sign copying"
+  COMMAND_HELP_OFF: "&e/copysign off &7- Disable sign copying"
+  COMMAND_HELP_CLEAR: "&e/copysign clear &7- Clear data from held sign"
+  COMMAND_HELP_SAVE: "&e/copysign save <name> &7- Save sign to library"
+  COMMAND_HELP_LOAD: "&e/copysign load <name> &7- Load sign from library"
+  COMMAND_HELP_DELETE: "&e/copysign delete <name> &7- Delete sign from library"
+  COMMAND_HELP_LIBRARY: "&e/copysign library &7- Open sign library GUI"
+  COMMAND_HELP_RELOAD: "&e/copysign reload &7- Reload plugin config"
+  COMMAND_HELP_VALIDATE: "&e/copysign validate &7- Validate configuration"
+  COMMAND_HELP_TEMPLATES: "&e/copysign templates &7- Manage server templates"
+  COMMAND_HELP_CONFIRM: "&e/copysign confirm &7- Confirm pending action"
+  COMMAND_HELP_CANCEL: "&e/copysign cancel &7- Cancel pending action"
+  
+  # Command State Messages
+  COMMAND_FEATURE_DISABLED: "&c%feature% is currently disabled."
+  
+  # ========================================
+  # PERMISSION MESSAGES
+  # ========================================
+  
+  NO_PERMISSION: "&cYou don't have permission to do that!"
+  NO_PERMISSION_USE: "&cYou don't have permission to use CopySign!"
+  NO_PERMISSION_LIBRARY: "&cYou don't have permission to use the sign library!"
+  NO_PERMISSION_RELOAD: "&cYou don't have permission to reload the plugin!"
+  NO_PERMISSION_TEMPLATES: "&cYou don't have permission to manage server templates!"
+  NO_PERMISSION_COPY_SIGN_TYPE: "&cYou don't have permission to copy from %type% signs."
+  NO_PERMISSION_PASTE_SIGN_TYPE: "&cYou don't have permission to paste to %type% signs."
+  PERMISSIONS_HEADER: "&7Permissions:"
+  
+  # ========================================
+  # SIGN OPERATION MESSAGES
+  # ========================================
+  
+  # Copy/Paste Operations
+  SIGN_COPIED: "&aSign text copied to your held sign!"
+  MUST_HOLD_SIGN: "&cYou must be holding a sign to copy text!"
+  INVALID_SIGN: "&cThat's not a valid sign!"
   CLEAR_NO_ITEM: "&cYou are not holding a sign with stored NBT data!"
   CLEAR_SUCCESS: "&aNBT data cleared from held sign."
-  SIGN_SAVED_SUCCESSFULLY: "&aSign saved successfully!"
-  SIGN_DELETED: "&aSign deleted successfully!"
-  SIGN_LOADED: "&aSign loaded successfully!"
-  SAVED_SIGN_NOT_FOUND: "&cNo saved sign found with that name."
-  SIGN_TYPE_MISMATCH: "&cSign type mismatch! You cannot use a %held% with %target% data."
-  SIGN_ALREADY_EXISTS: "&cA sign with that name already exists. Please choose a different name."
-  SIGN_NO_DATA: "&cThe sign item does not contain saved data."
-  SIGN_LIBRARY_EMPTY: "&cYour sign library is empty."
-  MAX_SIGNS_REACHED: "&cYou have reached the maximum number of saved signs ({max})!"
+  
+  # Sign Types
   HANGING_SIGN: "hanging sign"
   REGULAR_SIGN: "regular sign"
+  SIGN_TYPE_MISMATCH: "&cSign type mismatch! You cannot use a %held% with %target% data."
   SIGN_TYPE_NOT_ALLOWED_COPY: "&cThat sign type is not allowed to be copied."
   SIGN_TYPE_NOT_ALLOWED_PASTE: "&cThat sign type is not allowed for pasting."
   SIGN_TYPE_NOT_ALLOWED_SAVE: "&cThat sign type is not allowed for saving."
   SIGN_TYPE_NOT_ALLOWED_LOAD: "&cThat sign type is not allowed for loading."
   
-  # Error handling messages
+  # ========================================
+  # SIGN LIBRARY MESSAGES
+  # ========================================
+  
+  # Save/Load Operations
+  SIGN_SAVED_SUCCESSFULLY: "&aSign saved successfully!"
+  SIGN_DELETED: "&aSign deleted successfully!"
+  SIGN_LOADED: "&aSign loaded successfully!"
+  SIGN_LOADED_TO_HELD: "&aSign '%name%' loaded to your held sign!"
+  
+  # Library Management
+  SAVED_SIGN_NOT_FOUND: "&cNo saved sign found with that name."
+  SIGN_NOT_FOUND: "&cSign not found!"
+  SIGN_ALREADY_EXISTS: "&cA sign with that name already exists. Please choose a different name."
+  SIGN_NO_DATA: "&cThe sign item does not contain saved data."
+  SIGN_LIBRARY_EMPTY: "&cYour sign library is empty."
+  MAX_SIGNS_REACHED: "&cYou have reached the maximum number of saved signs ({max})!"
+  
+  # Rename Operations
+  SIGN_RENAME_PROMPT: "&aPlease type a new name for the sign:"
+  SIGN_RENAME_CANCEL_HINT: "&7Type 'cancel' to cancel."
+  SIGN_RENAME_CANCELLED: "&cRename cancelled."
+  SIGN_RENAME_SUCCESS: "&cSign renamed successfully!"
+  SIGN_NAME_NOT_IDENTIFIED: "&cCould not identify sign name!"
+  
+  # ========================================
+  # TEMPLATE MESSAGES
+  # ========================================
+  
+  # Template Operations
+  TEMPLATE_CREATED: "&aTemplate '%name%' created successfully!"
+  TEMPLATE_CREATE_SUCCESS: "&aServer template created successfully!"
+  TEMPLATE_DELETED: "&aTemplate '%name%' deleted successfully!"
+  TEMPLATE_DELETE_SUCCESS: "&aServer template '%name%' deleted successfully!"
+  TEMPLATE_SAVE_SUCCESS: "&aServer template '%name%' saved successfully!"
+  TEMPLATE_LOADED: "&aTemplate '%name%' loaded onto your sign!"
+  TEMPLATE_LOADED_TO_SIGN: "&aServer template '%name%' loaded to your held sign!"
+  
+  # Template Errors
+  TEMPLATE_NOT_FOUND: "&cTemplate '%name%' not found!"
+  TEMPLATE_NOT_FOUND_ERROR: "&cServer template not found."
+  TEMPLATE_ALREADY_EXISTS: "&cA template with that name already exists!"
+  TEMPLATE_NAME_EXISTS: "&cA server template with that name already exists!"
+  TEMPLATE_LIST_EMPTY: "&cNo server templates are available."
+  TEMPLATE_CREATE_FAILED: "&cFailed to create template. Please check your permissions and try again."
+  TEMPLATE_DELETE_FAILED: "&cFailed to delete template. Please check your permissions and try again."
+  
+  # Template Requirements
+  MUST_HOLD_SIGN_WITH_DATA: "&cYou must hold a sign with copied data to create a template!"
+  TEMPLATE_MUST_HOLD_SIGN: "&cYou must hold a sign to load a template!"
+  TEMPLATE_MUST_HOLD_SIGN_DATA: "&cYou must be holding a sign with copied data!"
+  TEMPLATE_NO_DATA_ERROR: "&cThe held sign has no copied data!"
+  TEMPLATE_TYPE_MISMATCH: "&cSign type mismatch! Template is for %template_type% signs, but you're holding a %held_type% sign."
+  
+  # Template Permissions
+  TEMPLATE_NO_PERMISSION_VIEW: "&cYou don't have permission to view server templates!"
+  TEMPLATE_NO_PERMISSION_CREATE: "&cYou don't have permission to create server templates!"
+  TEMPLATE_NO_PERMISSION_DELETE: "&cYou don't have permission to delete server templates!"
+  TEMPLATE_NO_PERMISSION_USE: "&cYou don't have permission to use server templates!"
+  
+  # Template Creation Flow
+  TEMPLATE_CREATION_PROMPT: "&aPlease type the name for the new server template in chat:"
+  TEMPLATE_CREATION_CANCEL_HINT: "&7Type 'cancel' to cancel."
+  TEMPLATE_CREATE_CANCELLED: "&cTemplate creation cancelled."
+  TEMPLATE_NAME_INVALID: "&cTemplate name must be one word and less than 16 characters!"
+  TEMPLATE_NAME_NOT_IDENTIFIED: "&cCould not identify template name!"
+  
+  # Template Help
+  TEMPLATE_HELP_HEADER: "&6&lCopySign Templates Commands:"
+  TEMPLATE_HELP_LIST: "&e/copysign templates list &7- Open template GUI"
+  TEMPLATE_HELP_CREATE: "&e/copysign templates create <name> &7- Create new template"
+  TEMPLATE_HELP_DELETE: "&e/copysign templates delete <name> [-force] &7- Delete template"
+  TEMPLATE_HELP_USE: "&e/copysign templates use <name> &7- Load template onto held sign"
+  TEMPLATE_HELP_EXAMPLES: "&7Examples:"
+  TEMPLATE_HELP_EXAMPLE_CREATE: "&7- /copysign templates create shop-header"
+  TEMPLATE_HELP_EXAMPLE_USE: "&7- /copysign templates use welcome-sign"
+  
+  # Template Usage
+  TEMPLATE_USAGE_CREATE: "&cUsage: /copysign templates create <name>"
+  TEMPLATE_USAGE_DELETE: "&cUsage: /copysign templates delete <name> [-force]"
+  TEMPLATE_USAGE_USE: "&cUsage: /copysign templates use <name>"
+  
+  # Template Confirmation
+  TEMPLATE_DELETE_CONFIRMATION: "&eAre you sure you want to delete template '&f%name%&e'?"
+  TEMPLATE_DELETE_CONFIRMATION_COMMAND: "&eType &a/copysign confirm &eto confirm or &c/copysign cancel &eto cancel."
+  TEMPLATE_DELETE_CONFIRMATION_EXPIRE: "&7This action will expire in 30 seconds."
+  
+  # ========================================
+  # VALIDATION MESSAGES
+  # ========================================
+  
+  INVALID_SIGN_NAME_FORMAT: "&cInvalid sign name. Use only letters, numbers, hyphens, and underscores (max 32 characters)."
+  INVALID_TEMPLATE_NAME: "&cInvalid template name! Use only letters, numbers, hyphens, and underscores (max 32 characters)."
+  INVALID_SIGN_ITEM_ERROR: "&cInvalid sign item."
+  SIGN_NO_REQUIRED_DATA: "&cSign does not contain the required data."
+  SIGN_DATA_SIZE_EXCEEDED: "&cInvalid sign data: exceeds size limits"
+  SIGN_DATA_TEXT_TOO_LARGE: "&cInvalid sign data: text too large"
+  
+  # ========================================
+  # CONFIRMATION MESSAGES
+  # ========================================
+  
+  NO_PENDING_CONFIRMATIONS: "&cYou don't have any pending confirmations."
+  ACTION_CANCELLED: "&cAction cancelled."
+  
+  # ========================================
+  # COOLDOWN MESSAGES
+  # ========================================
+  
+  COOLDOWN_MESSAGE: "&cYou must wait %time% %unit% before using that command again."
+  COOLDOWN_SIGN_COPY: "&cSign copy cooldown: %message%"
+  
+  # ========================================
+  # PROTECTION MESSAGES
+  # ========================================
+  
+  WORLDGUARD_COPY_DENIED: "&cYou cannot copy signs in this protected area!"
+  WORLDGUARD_PASTE_DENIED: "&cYou cannot paste signs in this protected area!"
+  
+  # ========================================
+  # ERROR MESSAGES
+  # ========================================
+  
   FILE_ERROR: "&cA file error occurred. Please try again or contact an administrator."
   CONFIG_ERROR: "&cConfiguration error detected. Using default settings."
   NBT_ERROR: "&cSign data appears to be corrupted. Please try copying the sign again."
   PERFORMANCE_ERROR: "&cOperation failed due to server load. Please try again in a moment."
+  PERFORMANCE_ERROR_RETRY: "&cOperation failed due to server load. Please try again in a moment."
   GENERAL_ERROR: "&cAn unexpected error occurred. Please try again or contact an administrator."
-  # Removed unused keys: EDIT_USAGE, CREATE_USAGE, sign-created, sign-edited, invalid-side 
+  
+  # Removed unused keys: EDIT_USAGE, CREATE_USAGE, sign-created, sign-edited, invalid-side

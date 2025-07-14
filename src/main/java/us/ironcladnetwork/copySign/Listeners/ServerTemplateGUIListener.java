@@ -11,13 +11,13 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import us.ironcladnetwork.copySign.CopySign;
 import us.ironcladnetwork.copySign.GUI.ServerTemplateGUI;
 import us.ironcladnetwork.copySign.Lang.Lang;
 import us.ironcladnetwork.copySign.Util.SavedSignData;
 import us.ironcladnetwork.copySign.Util.ServerTemplateManager;
+import us.ironcladnetwork.copySign.Util.DesignConstants;
+import us.ironcladnetwork.copySign.Util.SignLoreBuilder;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +43,7 @@ public class ServerTemplateGUIListener implements Listener {
         String title = event.getView().getTitle();
         
         // Check if it's a server template GUI
-        if (!title.contains("Server Templates")) return;
+        if (!title.contains("Sign Templates")) return;
         
         event.setCancelled(true);
         
@@ -66,40 +66,45 @@ public class ServerTemplateGUIListener implements Listener {
         if (clickedItem.getType() == Material.EMERALD && isAdmin) {
             ItemStack heldItem = player.getInventory().getItemInMainHand();
             if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
-                player.sendMessage(Lang.PREFIX.get() + "&cYou must be holding a sign with copied data!");
+                player.sendMessage(Lang.TEMPLATE_MUST_HOLD_SIGN_DATA.getWithPrefix());
                 return;
             }
             
             NBTItem nbtItem = new NBTItem(heldItem);
             if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack")) {
-                player.sendMessage(Lang.PREFIX.get() + "&cThe held sign has no copied data!");
+                player.sendMessage(Lang.TEMPLATE_NO_DATA_ERROR.getWithPrefix());
                 return;
             }
             
             // Ask for template name
             player.closeInventory();
-            player.sendMessage(Lang.PREFIX.get() + "&aPlease type the name for the new server template in chat:");
-            player.sendMessage(Lang.PREFIX.get() + "&7Type 'cancel' to cancel.");
+            player.sendMessage(Lang.TEMPLATE_CREATION_PROMPT.getWithPrefix());
+            player.sendMessage(Lang.TEMPLATE_CREATION_CANCEL_HINT.getWithPrefix());
             pendingTemplateNames.put(player.getUniqueId(), "CREATE");
             return;
         }
         
         // Handle template items
         if (clickedItem.getType().name().endsWith("_SIGN")) {
-            String templateName = ChatColor.stripColor(displayName);
+            // Extract template name from lore (should be at index 1 after the top separator)
+            List<String> lore = meta.getLore();
+            String templateName = null;
+            if (lore != null && lore.size() > 1) {
+                // The name is on line index 1, after SEPARATOR_TOP
+                String nameLine = lore.get(1);
+                templateName = ChatColor.stripColor(nameLine).trim();
+            }
             
-            if (event.getClick() == ClickType.RIGHT && isAdmin) {
-                // Delete template
-                if (templateManager.deleteTemplate(player, templateName)) {
-                    // Refresh GUI
-                    Map<String, SavedSignData> templates = templateManager.getAllTemplates();
-                    ServerTemplateGUI.open(player, templates, true);
+            if (event.getClick() == ClickType.LEFT) {
+                if (templateName == null) {
+                    player.sendMessage(Lang.TEMPLATE_NAME_NOT_IDENTIFIED.getWithPrefix());
+                    return;
                 }
-            } else if (event.getClick() == ClickType.LEFT) {
+                
                 // Load template
                 SavedSignData templateData = templateManager.getTemplate(templateName);
                 if (templateData == null) {
-                    player.sendMessage(Lang.PREFIX.get() + "&cTemplate not found!");
+                    player.sendMessage(Lang.TEMPLATE_NOT_FOUND.getWithPrefix());
                     return;
                 }
                 
@@ -119,57 +124,60 @@ public class ServerTemplateGUIListener implements Listener {
                     return;
                 }
                 
-                // Apply template data to held sign
+                // Apply template data to held sign with enhanced per-side glow support
                 NBTItem nbtItem = new NBTItem(heldItem);
+                
+                // Clear any existing NBT data first
+                nbtItem.removeKey("copiedSignFront");
+                nbtItem.removeKey("copiedSignBack");
+                nbtItem.removeKey("copiedSignFrontColor");
+                nbtItem.removeKey("copiedSignBackColor");
+                nbtItem.removeKey("signGlowing");
+                nbtItem.removeKey("frontGlowing");
+                nbtItem.removeKey("backGlowing");
+                nbtItem.removeKey("signType");
+                
                 nbtItem.setString("copiedSignFront", String.join("\n", templateData.getFront()));
                 nbtItem.setString("copiedSignBack", String.join("\n", templateData.getBack()));
                 nbtItem.setString("copiedSignFrontColor", templateData.getFrontColor());
                 nbtItem.setString("copiedSignBackColor", templateData.getBackColor());
-                nbtItem.setBoolean("signGlowing", templateData.isGlowing());
+                
+                // Store per-side glow states
+                nbtItem.setBoolean("frontGlowing", templateData.isFrontGlowing());
+                nbtItem.setBoolean("backGlowing", templateData.isBackGlowing());
+                nbtItem.setBoolean("signGlowing", templateData.isGlowing()); // Legacy compatibility
+                
                 nbtItem.setString("signType", templateData.getSignType());
                 
-                // Update item with lore
+                // Update item with premium lore showing ONLY template name (no physical item duplication)
                 ItemStack updatedItem = nbtItem.getItem();
                 ItemMeta updatedMeta = updatedItem.getItemMeta();
                 if (updatedMeta != null) {
-                    List<String> lore = new ArrayList<>();
-                    lore.add("§f§l[§6§lServer Template§f§l]");
-                    lore.add("§eTemplate: §f" + templateName);
+                    // Use simple SignLoreBuilder with ONLY template name - Minecraft handles physical item name
+                    List<String> updatedLore = SignLoreBuilder.buildPremiumSignLore(
+                        templateName,
+                        templateData.getFront(),
+                        templateData.getBack(),
+                        templateData.getFrontColor(),
+                        templateData.getBackColor(),
+                        templateData.isFrontGlowing(),
+                        templateData.isBackGlowing(),
+                        templateData.getSignType(),
+                        "Server Template"
+                    );
                     
-                    // Add preview of content
-                    String[] frontLines = templateData.getFront();
-                    boolean hasFrontData = false;
-                    for (int i = 0; i < frontLines.length; i++) {
-                        if (!frontLines[i].isEmpty()) {
-                            if (!hasFrontData) {
-                                lore.add("§f§lFront:");
-                                hasFrontData = true;
-                            }
-                            lore.add("§f§lLine " + (i + 1) + ": §f\"§b" + frontLines[i] + "§f\"");
-                        }
-                    }
-                    
-                    String[] backLines = templateData.getBack();
-                    boolean hasBackData = false;
-                    for (int i = 0; i < backLines.length; i++) {
-                        if (!backLines[i].isEmpty()) {
-                            if (!hasBackData) {
-                                lore.add("§f§lBack:");
-                                hasBackData = true;
-                            }
-                            lore.add("§f§lLine " + (i + 1) + ": §f\"§b" + backLines[i] + "§f\"");
-                        }
-                    }
-                    
-                    lore.add("§e§lGlowing: " + (templateData.isGlowing() ? "§aTrue" : "§cFalse"));
-                    
-                    updatedMeta.setLore(lore);
+                    updatedMeta.setLore(updatedLore);
                     updatedItem.setItemMeta(updatedMeta);
                 }
                 
                 player.getInventory().setItemInMainHand(updatedItem);
                 player.closeInventory();
-                player.sendMessage(Lang.PREFIX.get() + "&aServer template '" + templateName + "' loaded to your held sign!");
+                player.sendMessage(Lang.TEMPLATE_LOADED_TO_SIGN.formatWithPrefix("%name%", templateName));
+                
+                // Send enhanced mixed glow state warning if applicable
+                if (templateData.hasMixedGlowStates()) {
+                    player.sendMessage(DesignConstants.createMixedGlowWarning());
+                }
             }
         }
     }
@@ -189,26 +197,27 @@ public class ServerTemplateGUIListener implements Listener {
         
         // Handle cancel
         if (message.equalsIgnoreCase("cancel")) {
-            player.sendMessage(Lang.PREFIX.get() + "&cTemplate creation cancelled.");
+            player.sendMessage(Lang.TEMPLATE_CREATE_CANCELLED.getWithPrefix());
             return;
         }
         
         // Validate name
         if (message.contains(" ") || message.length() > 16) {
-            player.sendMessage(Lang.PREFIX.get() + "&cTemplate name must be one word and less than 16 characters!");
+            player.sendMessage(Lang.TEMPLATE_NAME_INVALID.getWithPrefix());
             return;
         }
         
         // Check if template already exists
         if (templateManager.getTemplate(message) != null) {
-            player.sendMessage(Lang.PREFIX.get() + "&cA server template with that name already exists!");
+            player.sendMessage(Lang.TEMPLATE_NAME_EXISTS.getWithPrefix());
             return;
         }
         
         // Save the template
         ItemStack heldItem = player.getInventory().getItemInMainHand();
         if (templateManager.saveTemplate(player, message, heldItem)) {
-            player.sendMessage(Lang.PREFIX.get() + "&aServer template created successfully!");
+            player.sendMessage(Lang.TEMPLATE_CREATE_SUCCESS.getWithPrefix());
         }
     }
+    
 } 

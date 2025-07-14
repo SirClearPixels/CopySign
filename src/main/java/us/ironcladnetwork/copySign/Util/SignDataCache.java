@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Util;
 
 import org.bukkit.Location;
+import us.ironcladnetwork.copySign.CopySign;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
@@ -13,8 +14,7 @@ public class SignDataCache {
     private static final Map<Location, SignData> pendingData = new ConcurrentHashMap<>();
     private static final Map<Location, Long> cacheTimestamps = new ConcurrentHashMap<>();
     
-    // Cache TTL: 5 minutes (300,000 milliseconds)
-    private static final long CACHE_TTL = 300000;
+    // Cache TTL is now configurable via performance.cache-expiry-seconds
 
     /**
      * Stores sign data for the given location.
@@ -104,13 +104,14 @@ public class SignDataCache {
      */
     public static void cleanupExpiredEntries() {
         long now = System.currentTimeMillis();
+        long cacheTTL = CopySign.getInstance().getConfigManager().getCacheExpirySeconds() * 1000L;
         
         // Use removeIf for atomic removal during iteration
         cacheTimestamps.entrySet().removeIf(entry -> {
             Location loc = entry.getKey();
             long timestamp = entry.getValue();
             
-            if ((now - timestamp) > CACHE_TTL) {
+            if ((now - timestamp) > cacheTTL) {
                 // Remove the corresponding data entry as well
                 pendingData.remove(loc);
                 return true; // Remove this timestamp entry
@@ -138,9 +139,10 @@ public class SignDataCache {
      */
     public static int getExpiredEntriesCount() {
         long now = System.currentTimeMillis();
+        long cacheTTL = CopySign.getInstance().getConfigManager().getCacheExpirySeconds() * 1000L;
         return (int) cacheTimestamps.values().stream()
             .mapToLong(timestamp -> now - timestamp)
-            .filter(age -> age > CACHE_TTL)
+            .filter(age -> age > cacheTTL)
             .count();
     }
 
@@ -170,5 +172,15 @@ public class SignDataCache {
         public boolean isGlowing() {
             return glowing;
         }
+    }
+    
+    /**
+     * Gets the current size of the cache.
+     * Useful for monitoring memory usage.
+     * 
+     * @return Number of cached entries
+     */
+    public static int getSize() {
+        return pendingData.size();
     }
 } 

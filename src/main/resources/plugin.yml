@@ -6,6 +6,7 @@ authors: [ ClearPixels ]
 description: Copy and paste sign text via NBT data
 website: IroncladNetwork.us
 depend: [ NBTAPI ]
+softdepend: [ WorldGuard ]
 permissions:
   # Base permissions
   copysign.use:
@@ -105,6 +106,9 @@ permissions:
     default: false
   copysign.bypass.worlds:
     description: Allows use in disabled worlds
+    default: false
+  copysign.bypass.worldguard:
+    description: Bypasses WorldGuard region protection checks
     default: false
 commands:
   copysign:

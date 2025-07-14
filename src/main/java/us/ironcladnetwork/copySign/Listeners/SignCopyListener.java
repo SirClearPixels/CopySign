@@ -17,10 +17,10 @@ import us.ironcladnetwork.copySign.Util.ErrorHandler;
 import us.ironcladnetwork.copySign.Util.NBTValidationUtil;
 import us.ironcladnetwork.copySign.Util.Permissions;
 import us.ironcladnetwork.copySign.Util.VersionCompatibility;
-import java.util.ArrayList;
 import java.util.List;
 import us.ironcladnetwork.copySign.Util.SignValidationUtil;
 import us.ironcladnetwork.copySign.Util.SignLoreBuilder;
+import us.ironcladnetwork.copySign.Util.DesignConstants;
 import org.bukkit.DyeColor;
 
 /**
@@ -62,7 +62,9 @@ public class SignCopyListener implements Listener {
             return;
 
         Player player = event.getPlayer();
-        if (!player.isSneaking())
+        
+        // Check if sneaking is required for copying (from config)
+        if (CopySign.getInstance().getConfigManager().requireSneakToCopy() && !player.isSneaking())
             return;
 
         // First check if the player is holding a sign - if not, silently return
@@ -84,10 +86,10 @@ public class SignCopyListener implements Listener {
         }
         
         // Check if the sign-copy feature is enabled in config
-        if (!CopySign.getInstance().getConfig().getBoolean("features.sign-copy", true)) {
+        if (!CopySign.getInstance().getConfigManager().isSignCopyEnabled()) {
             Block clickedBlock = event.getClickedBlock();
             if (clickedBlock != null && clickedBlock.getState() instanceof Sign) {
-                player.sendMessage(Lang.PREFIX.get() + "&cSign copying is currently disabled.");
+                player.sendMessage(Lang.COMMAND_FEATURE_DISABLED.formatWithPrefix("%feature%", "Sign copying"));
             }
             return;
         }
@@ -132,13 +134,13 @@ public class SignCopyListener implements Listener {
         
         // Check if player has permission to copy from this sign type
         if (!Permissions.canCopySignType(player, clickedHanging)) {
-            player.sendMessage(Lang.PREFIX.get() + "§cYou don't have permission to copy from " + (clickedHanging ? "hanging" : "regular") + " signs.");
+            player.sendMessage(Lang.NO_PERMISSION_COPY_SIGN_TYPE.formatWithPrefix("%type%", clickedHanging ? "hanging" : "regular"));
             return;
         }
         
         // Check if player has permission to paste to this sign type
         if (!Permissions.canPasteSignType(player, heldHanging)) {
-            player.sendMessage(Lang.PREFIX.get() + "§cYou don't have permission to paste to " + (heldHanging ? "hanging" : "regular") + " signs.");
+            player.sendMessage(Lang.NO_PERMISSION_PASTE_SIGN_TYPE.formatWithPrefix("%type%", heldHanging ? "hanging" : "regular"));
             return;
         }
         
@@ -149,6 +151,12 @@ public class SignCopyListener implements Listener {
                 "%target%", clickedHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
             return;
         }
+        
+        // Check WorldGuard protection if enabled
+        if (!CopySign.getInstance().getWorldGuardIntegration().canCopySign(player, clickedBlock.getLocation())) {
+            player.sendMessage(Lang.WORLDGUARD_COPY_DENIED.getWithPrefix());
+            return;
+        }
 
         Sign sign = (Sign) clickedBlock.getState();
         // Retrieve side colors using the new API.
@@ -156,7 +164,7 @@ public class SignCopyListener implements Listener {
         DyeColor backColor = sign.getSide(org.bukkit.block.sign.Side.BACK).getColor();
         
         // If the player lacks permission to copy color, don't store color information
-        boolean copyColors = Permissions.canCopyColor(player) && CopySign.getInstance().getConfig().getBoolean("features.copy-colors", true);
+        boolean copyColors = Permissions.canCopyColor(player) && CopySign.getInstance().getConfigManager().isCopyColorsEnabled();
         if (!copyColors) {
             frontColor = null;
             backColor = null;
@@ -174,12 +182,16 @@ public class SignCopyListener implements Listener {
             }
         }
 
-        // Copy the glow state from the sign using version-compatible method
-        boolean signGlowing = VersionCompatibility.isSignGlowing(sign);
+        // Copy the per-side glow states from the sign using enhanced version-compatible methods
+        boolean frontGlowing = VersionCompatibility.isSignGlowingFront(sign);
+        boolean backGlowing = VersionCompatibility.isSignGlowingBack(sign);
+        boolean legacyGlowing = frontGlowing || backGlowing; // Legacy compatibility
 
         // If the player lacks permission to copy glow, disable it
-        if (!Permissions.canCopyGlow(player) || !CopySign.getInstance().getConfig().getBoolean("features.copy-glow", true)) {
-            signGlowing = false;
+        if (!Permissions.canCopyGlow(player) || !CopySign.getInstance().getConfigManager().isCopyGlowEnabled()) {
+            frontGlowing = false;
+            backGlowing = false;
+            legacyGlowing = false;
         }
 
         // Use NBT-API to store the copied sign text and side colors onto the held sign item.
@@ -202,22 +214,34 @@ public class SignCopyListener implements Listener {
             if (backColor != null) {
                 nbtItem.setString("copiedSignBackColor", backColor.name());
             }
-            nbtItem.setBoolean("signGlowing", signGlowing);
+            // Store per-side glow states with legacy compatibility
+            nbtItem.setBoolean("frontGlowing", frontGlowing);
+            nbtItem.setBoolean("backGlowing", backGlowing);
+            nbtItem.setBoolean("signGlowing", legacyGlowing); // Legacy compatibility
             // Store the sign type so that later paste or change events can verify the type if desired.
             nbtItem.setString("signType", clickedHanging ? "hanging" : "regular");
 
             // Get the updated item from NBTItem.
             ItemStack updatedItem = nbtItem.getItem();
 
-            // Update item meta with lore for visual display.
+            // Update item meta with premium lore showing ONLY content identifier (no physical item duplication)
             ItemMeta meta = updatedItem.getItemMeta();
             if (meta != null) {
                 String[] frontLines = frontText.toString().split("\n");
                 String[] backLines = backText.toString().split("\n");
-                List<String> lore = SignLoreBuilder.buildSignLore(frontLines, backLines, 
+                
+                // Use simple SignLoreBuilder with ONLY content identifier - Minecraft handles physical item name
+                List<String> lore = SignLoreBuilder.buildPremiumSignLore(
+                    "Copied Sign",
+                    frontLines, 
+                    backLines, 
                     frontColor != null ? frontColor.name() : null, 
                     backColor != null ? backColor.name() : null, 
-                    signGlowing, null);
+                    frontGlowing,
+                    backGlowing,
+                    clickedHanging ? "hanging" : "regular",
+                    "Copied"
+                );
                 
                 meta.setLore(lore);
                 updatedItem.setItemMeta(meta);
@@ -228,6 +252,17 @@ public class SignCopyListener implements Listener {
 
             player.sendMessage(Lang.SIGN_COPIED.getWithPrefix());
             
+            // Play copy sound
+            CopySign.getInstance().getSoundManager().playCopySound(player);
+            
+            // Record metrics
+            CopySign.getInstance().getMetricsManager().recordCopyOperation(player);
+            
+            // Send enhanced mixed glow state warning if applicable
+            if (frontGlowing != backGlowing && (Permissions.canCopyGlow(player) && CopySign.getInstance().getConfigManager().isCopyGlowEnabled())) {
+                player.sendMessage(DesignConstants.createMixedGlowWarning());
+            }
+            
             // Record command usage
             CopySign.getCooldownManager().recordCommandUse(player, "copy");
             
@@ -235,5 +270,6 @@ public class SignCopyListener implements Listener {
             ErrorHandler.handleNBTError("copying sign data", player, e);
         }
     }
+    
 
 } 

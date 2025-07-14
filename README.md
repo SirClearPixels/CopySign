@@ -13,6 +13,7 @@ A powerful Minecraft Spigot plugin that allows players to copy and paste sign te
 - [Configuration](#-configuration)
 - [Usage Guide](#-usage-guide)
 - [Sign Library System](#-sign-library-system)
+- [Server Templates System](#-server-templates-system)
 - [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
 - [Support](#-support)
@@ -109,7 +110,13 @@ permissions:
 | `/copysign delete <name>` | Delete sign from library | `copysign.library` |
 | `/copysign library` | Open library GUI | `copysign.library` |
 | `/copysign reload` | Reload plugin configuration | `copysign.reload` |
-| `/copysign templates` | View server templates | `copysign.templates` |
+| `/copysign templates` | Display template commands help | `copysign.templates` |
+| `/copysign templates list` | Open server templates GUI | `copysign.templates` |
+| `/copysign templates create <name>` | Create template from held sign | `copysign.templates.create` |
+| `/copysign templates delete <name> [-force]` | Delete server template | `copysign.templates.delete` |
+| `/copysign templates use <name>` | Load template onto held sign | `copysign.templates.use` |
+| `/copysign confirm` | Confirm pending action | `copysign.use` |
+| `/copysign cancel` | Cancel pending action | `copysign.use` |
 
 **Aliases**: `/cs` can be used instead of `/copysign`
 
@@ -124,7 +131,10 @@ permissions:
 ### Administrative Permissions
 - `copysign.reload` - Reload plugin configuration *(default: op)*
 - `copysign.templates` - View server templates *(default: op)*
-- `copysign.admin` - Manage server templates *(default: op)*
+- `copysign.templates.create` - Create server templates *(default: op)*
+- `copysign.templates.delete` - Delete server templates *(default: op)*
+- `copysign.templates.use` - Use server templates *(default: op)*
+- `copysign.admin` - Full administrative access *(default: op)*
 
 ### Permission Groups
 ```yaml
@@ -261,6 +271,55 @@ messages:
 - Save complex signs with colors/formatting
 - Create templates for common use cases
 
+## 🌐 Server Templates System
+
+### Overview
+Server templates are administrator-managed sign templates available to all players with proper permissions. Unlike personal libraries, server templates provide standardized signs for common server needs.
+
+### Managing Server Templates
+#### Creating Templates
+```bash
+# Copy a sign first (Shift + Left-click)
+/copysign templates create welcome-spawn
+/copysign templates create shop-header
+/copysign templates create rules-section1
+```
+
+#### Using Templates
+```bash
+# Hold a sign item first
+/copysign templates use welcome-spawn
+# Place the sign - template applies automatically
+```
+
+#### Deleting Templates
+```bash
+# Delete with confirmation prompt
+/copysign templates delete old-template
+
+# Skip confirmation with -force flag
+/copysign templates delete old-template -force
+```
+
+#### Viewing Templates
+```bash
+# Open GUI to browse all server templates
+/copysign templates list
+```
+
+### Template Features
+- **Server-wide availability**: Accessible to all players with permission
+- **Admin-controlled**: Only administrators can create/delete
+- **Sign type validation**: Ensures compatibility between template and held sign
+- **Confirmation prompts**: Prevents accidental deletion (configurable)
+- **Tab completion**: Smart completion for template names
+
+### Template Permissions
+- `copysign.templates` - View and list server templates
+- `copysign.templates.use` - Load templates onto signs
+- `copysign.templates.create` - Create new server templates
+- `copysign.templates.delete` - Delete existing templates
+
 ## 🔧 Troubleshooting
 
 ### Common Issues
@@ -286,6 +345,19 @@ messages:
 - ✅ Grant `copysign.library` permission
 - ✅ Check if `savedSigns.yml` exists and is writable
 - ✅ Verify sign was copied before saving
+
+#### "Template commands not working"
+- ✅ Grant appropriate template permissions (`copysign.templates.*`)
+- ✅ For creation: Ensure you're holding a sign with copied data
+- ✅ For use: Ensure you're holding a blank sign item
+- ✅ Check template name is valid (alphanumeric, hyphens, underscores only)
+- ✅ Verify template exists with `/copysign templates list`
+- ✅ Check console for any error messages
+
+#### "Confirmation prompts timing out"
+- ✅ Use `/copysign confirm` within 30 seconds
+- ✅ Or use `-force` flag to skip confirmation: `/copysign templates delete <name> -force`
+- ✅ Check `templates.require-confirmation-on-delete` in config.yml
 
 ### Debug Mode
 Enable debug logging in `config.yml`:

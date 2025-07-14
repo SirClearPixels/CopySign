@@ -125,20 +125,20 @@ public class ServerTemplateManager {
     public boolean saveTemplate(Player player, String name, ItemStack signItem) {
         // Check admin permission
         if (!player.hasPermission("copysign.admin")) {
-            player.sendMessage(Lang.PREFIX.get() + "&cYou don't have permission to manage server templates!");
+            player.sendMessage(Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
             return false;
         }
         
         // Validate that the signItem is not null and is of a sign type.
         if (signItem == null || signItem.getType() == Material.AIR || !signItem.getType().name().endsWith("_SIGN")) {
-            player.sendMessage(Lang.PREFIX.get() + "&cInvalid sign item.");
+            player.sendMessage(Lang.INVALID_SIGN_ITEM_ERROR.getWithPrefix());
             return false;
         }
         
         NBTItem nbtItem = new NBTItem(signItem);
         // Ensure required NBT tags are present.
         if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack")) {
-            player.sendMessage(Lang.PREFIX.get() + "&cSign does not contain the required data.");
+            player.sendMessage(Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
             return false;
         }
         
@@ -173,7 +173,7 @@ public class ServerTemplateManager {
 
         // Persist the updated configuration.
         saveConfig();
-        player.sendMessage(Lang.PREFIX.get() + "&aServer template '" + name + "' saved successfully!");
+        player.sendMessage(Lang.TEMPLATE_SAVE_SUCCESS.formatWithPrefix("%name%", name));
         return true;
     }
 
@@ -221,19 +221,19 @@ public class ServerTemplateManager {
     public boolean deleteTemplate(Player player, String name) {
         // Check admin permission
         if (!player.hasPermission("copysign.admin")) {
-            player.sendMessage(Lang.PREFIX.get() + "&cYou don't have permission to manage server templates!");
+            player.sendMessage(Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
             return false;
         }
         
         ConfigurationSection templatesSection = templateConfig.getConfigurationSection("templates");
         if (templatesSection == null || !templatesSection.contains(name)) {
-            player.sendMessage(Lang.PREFIX.get() + "&cServer template not found.");
+            player.sendMessage(Lang.TEMPLATE_NOT_FOUND_ERROR.getWithPrefix());
             return false;
         }
         
         templatesSection.set(name, null);
         saveConfig();
-        player.sendMessage(Lang.PREFIX.get() + "&aServer template '" + name + "' deleted successfully!");
+        player.sendMessage(Lang.TEMPLATE_DELETE_SUCCESS.formatWithPrefix("%name%", name));
         return true;
     }
 
