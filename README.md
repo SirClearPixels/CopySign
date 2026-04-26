@@ -2,7 +2,7 @@
 
 A powerful Minecraft Spigot plugin that allows players to copy and paste sign text, colors, and glow states with NBT data storage and a personal sign library system.
 
-**Version 2.2.0** - Full compatibility with Minecraft 1.21.7!
+**Version 2.3.0** - Full compatibility with Minecraft 1.21.11, Folia support, per-side sign glow, and Adventure Component API!
 
 ## 📋 Table of Contents
 
@@ -60,7 +60,7 @@ A powerful Minecraft Spigot plugin that allows players to copy and paste sign te
 4. Restart your server to load dependencies
 
 ### Step 2: Install CopySign
-1. Download the latest `CopySign-2.2.0.jar`
+1. Download the latest `CopySign-2.3.0.jar`
 2. Place the jar file in your server's `plugins/` folder
 3. Restart your server
 
