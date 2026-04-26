@@ -118,15 +118,28 @@ public class SignPlaceListener implements Listener {
         // Cache the text data for the SignChangeEvent
         String copiedSignFront = nbtItem.getString("copiedSignFront");
         String copiedSignBack = nbtItem.getString("copiedSignBack");
-        boolean signGlowing = nbtItem.hasTag("signGlowing") ? nbtItem.getBoolean("signGlowing") : false;
-        
+
+        // Read per-side glow states, falling back to legacy 'signGlowing' tag
+        boolean frontGlowing;
+        boolean backGlowing;
+        if (nbtItem.hasTag("frontGlowing") || nbtItem.hasTag("backGlowing")) {
+            // New per-side format
+            frontGlowing = nbtItem.hasTag("frontGlowing") ? nbtItem.getBoolean("frontGlowing") : false;
+            backGlowing = nbtItem.hasTag("backGlowing") ? nbtItem.getBoolean("backGlowing") : false;
+        } else {
+            // Legacy single-glow format
+            boolean signGlowing = nbtItem.hasTag("signGlowing") ? nbtItem.getBoolean("signGlowing") : false;
+            frontGlowing = signGlowing;
+            backGlowing = signGlowing;
+        }
+
         String[] frontLines = copiedSignFront.split("\n", -1);
         frontLines = Util.preserveColors(frontLines);
         String[] backLines = copiedSignBack.split("\n", -1);
         backLines = Util.preserveColors(backLines);
-        
+
         // Store only the text data in cache, as we've already applied the dye colors
-        SignDataCache.put(block.getLocation(), new SignDataCache.SignData(frontLines, backLines, signGlowing));
+        SignDataCache.put(block.getLocation(), new SignDataCache.SignData(frontLines, backLines, frontGlowing, backGlowing));
         
         // Record command usage
         CopySign.getCooldownManager().recordCommandUse(player, "paste");

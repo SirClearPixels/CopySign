@@ -3,6 +3,9 @@ package us.ironcladnetwork.copySign.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
+import us.ironcladnetwork.copySign.CopySign;
+
+import java.util.logging.Logger;
 
 /**
  * Version compatibility layer for handling differences between Minecraft versions.
@@ -162,6 +165,27 @@ public class VersionCompatibility {
         return !IS_LEGACY_VERSION;
     }
     
+    /**
+     * Logs detected server capabilities at startup.
+     * Called once during plugin enable to help admins verify the plugin
+     * recognizes their server version and feature availability.
+     */
+    public static void logCapabilities() {
+        try {
+            Logger logger = CopySign.getInstance().getLogger();
+            logger.info("Server version: " + Bukkit.getBukkitVersion());
+            logger.info("Side-specific signs: " + (supportsSideSpecificSigns() ? "supported" : "legacy mode"));
+            logger.info("Folia detected: " + SchedulerUtil.isFolia());
+        } catch (Exception e) {
+            // Avoid startup failures if any method throws
+            try {
+                CopySign.getInstance().getLogger().warning("Failed to log capabilities: " + e.getMessage());
+            } catch (Exception ignored) {
+                // Plugin instance not available yet, silently skip
+            }
+        }
+    }
+
     /**
      * Safely gets text from a specific side of a sign.
      * 

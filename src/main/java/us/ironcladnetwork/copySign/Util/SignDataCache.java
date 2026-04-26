@@ -147,17 +147,38 @@ public class SignDataCache {
     }
 
     /**
-     * Container for front and back sign texts.
+     * Container for front and back sign texts with per-side glow state.
      */
     public static class SignData {
         private final String[] front;
         private final String[] back;
-        private final boolean glowing;
+        private final boolean frontGlowing;
+        private final boolean backGlowing;
 
-        public SignData(String[] front, String[] back, boolean glowing) {
+        /**
+         * Creates sign data with independent per-side glow states.
+         *
+         * @param front front side text lines
+         * @param back back side text lines
+         * @param frontGlowing whether the front side should glow
+         * @param backGlowing whether the back side should glow
+         */
+        public SignData(String[] front, String[] back, boolean frontGlowing, boolean backGlowing) {
             this.front = front;
             this.back = back;
-            this.glowing = glowing;
+            this.frontGlowing = frontGlowing;
+            this.backGlowing = backGlowing;
+        }
+
+        /**
+         * Legacy compatibility constructor -- applies same glow to both sides.
+         *
+         * @param front front side text lines
+         * @param back back side text lines
+         * @param glowing whether both sides should glow
+         */
+        public SignData(String[] front, String[] back, boolean glowing) {
+            this(front, back, glowing, glowing);
         }
 
         public String[] getFront() {
@@ -168,9 +189,24 @@ public class SignDataCache {
             return back;
         }
 
-        /** Returns whether the sign should be glowing */
+        /** Returns whether the front side should be glowing */
+        public boolean isFrontGlowing() {
+            return frontGlowing;
+        }
+
+        /** Returns whether the back side should be glowing */
+        public boolean isBackGlowing() {
+            return backGlowing;
+        }
+
+        /**
+         * Returns whether either side of the sign is glowing.
+         *
+         * @deprecated Use {@link #isFrontGlowing()} and {@link #isBackGlowing()} for per-side glow state.
+         */
+        @Deprecated
         public boolean isGlowing() {
-            return glowing;
+            return frontGlowing || backGlowing;
         }
     }
     

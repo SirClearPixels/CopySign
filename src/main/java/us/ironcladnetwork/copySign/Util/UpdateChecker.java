@@ -26,33 +26,32 @@ public class UpdateChecker {
     /**
      * Checks for updates asynchronously.
      * Results are logged to console only - no player notifications.
-     * 
+     *
      * @param consumer Callback with the latest version string
      */
     public void checkForUpdate(Consumer<String> consumer) {
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+        SchedulerUtil.runAsync(plugin, () -> {
             try (InputStream inputStream = new URL(
                     "https://api.spigotmc.org/legacy/update.php?resource=" + resourceId
             ).openStream(); Scanner scanner = new Scanner(inputStream)) {
-                
+
                 if (scanner.hasNext()) {
                     String latestVersion = scanner.next();
                     String currentVersion = plugin.getDescription().getVersion();
-                    
-                    plugin.getServer().getScheduler().runTask(plugin, () -> {
-                        consumer.accept(latestVersion);
-                        
-                        if (isNewerVersion(currentVersion, latestVersion)) {
-                            plugin.getLogger().info("=================================================");
-                            plugin.getLogger().info("CopySign Update Available!");
-                            plugin.getLogger().info("Current Version: " + currentVersion);
-                            plugin.getLogger().info("Latest Version: " + latestVersion);
-                            plugin.getLogger().info("Download: https://www.spigotmc.org/resources/copysign." + resourceId);
-                            plugin.getLogger().info("=================================================");
-                        } else {
-                            plugin.getLogger().info("CopySign is up to date (Version: " + currentVersion + ")");
-                        }
-                    });
+
+                    // Logging is safe to do async, no need to schedule back to main thread
+                    consumer.accept(latestVersion);
+
+                    if (isNewerVersion(currentVersion, latestVersion)) {
+                        plugin.getLogger().info("=================================================");
+                        plugin.getLogger().info("CopySign Update Available!");
+                        plugin.getLogger().info("Current Version: " + currentVersion);
+                        plugin.getLogger().info("Latest Version: " + latestVersion);
+                        plugin.getLogger().info("Download: https://www.spigotmc.org/resources/copysign." + resourceId);
+                        plugin.getLogger().info("=================================================");
+                    } else {
+                        plugin.getLogger().info("CopySign is up to date (Version: " + currentVersion + ")");
+                    }
                 }
             } catch (IOException exception) {
                 plugin.getLogger().warning("Cannot check for updates: " + exception.getMessage());

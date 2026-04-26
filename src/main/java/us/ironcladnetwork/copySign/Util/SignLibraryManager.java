@@ -1,7 +1,6 @@
 package us.ironcladnetwork.copySign.Util;
 
 import de.tr7zw.nbtapi.NBTItem;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -179,8 +178,8 @@ public class SignLibraryManager {
             }
         }).thenApply(result -> {
             if (callback != null) {
-                // Execute callback on main thread
-                Bukkit.getScheduler().runTask(plugin, () -> callback.accept(result));
+                // Execute callback on global region scheduler
+                SchedulerUtil.runGlobal(plugin, () -> callback.accept(result));
             }
             return result;
         });

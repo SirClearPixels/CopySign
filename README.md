@@ -2,6 +2,8 @@
 
 A powerful Minecraft Spigot plugin that allows players to copy and paste sign text, colors, and glow states with NBT data storage and a personal sign library system.
 
+**Version 2.2.0** - Full compatibility with Minecraft 1.21.7!
+
 ## 📋 Table of Contents
 
 - [Features](#-features)
@@ -36,24 +38,29 @@ A powerful Minecraft Spigot plugin that allows players to copy and paste sign te
 - **📊 bStats Integration**: Anonymous usage statistics (optional)
 - **🔧 Reload Support**: Hot-reload configuration without restart
 - **🌐 Multi-language Ready**: Customizable message system
+- **🛡️ WorldGuard Support**: Respects region protections (optional)
+- **🔊 Sound Effects**: Customizable feedback sounds for all actions
+- **⚡ Performance Optimized**: Thread-safe operations and efficient caching
 
 ## 📋 Requirements
 
-- **Minecraft**: 1.21+ (tested with 1.21.1)
+- **Minecraft**: 1.21.7+ (tested with 1.21.7)
 - **Server Software**: Spigot, Paper, or compatible forks
 - **Java**: 21+ (compiled with Java 21)
 - **Dependencies**: 
-  - [NBT-API v2.12.2+](https://www.spigotmc.org/resources/nbt-api.7939/) (Required)
+  - [NBT-API v2.15.1+](https://www.spigotmc.org/resources/nbt-api.7939/) (Required)
+  - [WorldGuard](https://enginehub.org/worldguard) (Optional - for region protection)
 
 ## 🚀 Installation
 
 ### Step 1: Install Dependencies
-1. Download [NBT-API plugin](https://www.spigotmc.org/resources/nbt-api.7939/)
+1. Download [NBT-API plugin](https://www.spigotmc.org/resources/nbt-api.7939/) (v2.15.1 or newer)
 2. Place `NBTAPI-X.X.X.jar` in your server's `plugins/` folder
-3. Restart your server to load NBT-API
+3. (Optional) Download [WorldGuard](https://enginehub.org/worldguard) for region protection
+4. Restart your server to load dependencies
 
 ### Step 2: Install CopySign
-1. Download the latest `CopySign-X.X-X.jar`
+1. Download the latest `CopySign-2.2.0.jar`
 2. Place the jar file in your server's `plugins/` folder
 3. Restart your server
 
@@ -127,6 +134,16 @@ permissions:
 - `copysign.copycolor` - Copy sign text colors *(default: op)*
 - `copysign.copyglow` - Copy sign glow states *(default: op)*
 - `copysign.library` - Access sign library features *(default: op)*
+- `copysign.library.save` - Save signs to personal library *(default: op)*
+- `copysign.library.load` - Load signs from personal library *(default: op)*
+- `copysign.library.delete` - Delete signs from personal library *(default: op)*
+- `copysign.library.view` - View personal library *(default: op)*
+
+### Sign Type Permissions
+- `copysign.copy.regular` - Copy from regular signs *(default: op)*
+- `copysign.copy.hanging` - Copy from hanging signs *(default: op)*
+- `copysign.paste.regular` - Paste to regular signs *(default: op)*
+- `copysign.paste.hanging` - Paste to hanging signs *(default: op)*
 
 ### Administrative Permissions
 - `copysign.reload` - Reload plugin configuration *(default: op)*
@@ -135,6 +152,12 @@ permissions:
 - `copysign.templates.delete` - Delete server templates *(default: op)*
 - `copysign.templates.use` - Use server templates *(default: op)*
 - `copysign.admin` - Full administrative access *(default: op)*
+
+### Bypass Permissions
+- `copysign.bypass.cooldowns` - Bypass command cooldowns *(default: false)*
+- `copysign.bypass.limits` - Bypass various plugin limits *(default: false)*
+- `copysign.bypass.worlds` - Use in disabled worlds *(default: false)*
+- `copysign.bypass.worldguard` - Bypass WorldGuard protection *(default: false)*
 
 ### Permission Groups
 ```yaml
@@ -389,9 +412,9 @@ settings:
 - **Documentation**: Check this README and in-game `/copysign help`
 
 ### Server Compatibility
-- **Tested on**: Spigot 1.21.1, Paper 1.21.1
+- **Tested on**: Spigot 1.21.7, Paper 1.21.7
 - **Compatible with**: Most Spigot-based servers
-- **Java versions**: Compiled with Java 21, compatible with Java 8+
+- **Java versions**: Compiled with Java 21, requires Java 21+
 
 ---
 

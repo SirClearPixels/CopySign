@@ -26,7 +26,6 @@ messages:
   COMMAND_HELP_DELETE: "&e/copysign delete <name> &7- Delete sign from library"
   COMMAND_HELP_LIBRARY: "&e/copysign library &7- Open sign library GUI"
   COMMAND_HELP_RELOAD: "&e/copysign reload &7- Reload plugin config"
-  COMMAND_HELP_VALIDATE: "&e/copysign validate &7- Validate configuration"
   COMMAND_HELP_TEMPLATES: "&e/copysign templates &7- Manage server templates"
   COMMAND_HELP_CONFIRM: "&e/copysign confirm &7- Confirm pending action"
   COMMAND_HELP_CANCEL: "&e/copysign cancel &7- Cancel pending action"

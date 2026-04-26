@@ -223,9 +223,9 @@ public class ErrorHandler {
             }
         }).thenApply(result -> {
             if (callback != null) {
-                // Execute callback on main thread if running in a Bukkit environment
+                // Execute callback on global region scheduler if running in a Bukkit environment
                 if (CopySign.getInstance() != null) {
-                    org.bukkit.Bukkit.getScheduler().runTask(CopySign.getInstance(), () -> callback.accept(result));
+                    SchedulerUtil.runGlobal(CopySign.getInstance(), () -> callback.accept(result));
                 } else {
                     callback.accept(result);
                 }
@@ -233,20 +233,20 @@ public class ErrorHandler {
             return result;
         });
     }
-    
+
     /**
      * Attempts to recover a file from its backup.
-     * 
+     *
      * @param file The file to recover
      * @return true if recovery was successful, false otherwise
      */
     private static boolean attemptFileRecovery(File file) {
         return attemptFileRecoveryAsync(file, null).join();
     }
-    
+
     /**
      * Asynchronously attempts to recover a file from its backup.
-     * 
+     *
      * @param file The file to recover
      * @param callback Optional callback to execute after recovery completion
      * @return CompletableFuture that completes with recovery success status
@@ -260,28 +260,28 @@ public class ErrorHandler {
                     logger.warning("Invalid file path detected, recovery rejected: " + file.getName());
                     return false;
                 }
-                
+
                 Path parentPath = filePath.getParent();
                 if (parentPath == null) {
                     logger.warning("Cannot determine parent directory for recovery: " + file.getName());
                     return false;
                 }
-                
+
                 // Use secure path resolution for backup file
                 String backupFileName = file.getName() + BACKUP_SUFFIX;
                 Path backupPath = parentPath.resolve(backupFileName).normalize();
-                
+
                 // Ensure backup path stays within parent directory
                 if (!backupPath.startsWith(parentPath)) {
                     logger.warning("Backup path escapes parent directory, recovery rejected: " + backupFileName);
                     return false;
                 }
-                
+
                 if (!Files.exists(backupPath)) {
                     logger.warning("No backup found for " + file.getName() + ", cannot recover");
                     return false;
                 }
-                
+
                 Files.copy(backupPath, filePath, StandardCopyOption.REPLACE_EXISTING);
                 logger.info("Successfully recovered " + file.getName() + " from backup");
                 return true;
@@ -291,9 +291,9 @@ public class ErrorHandler {
             }
         }).thenApply(result -> {
             if (callback != null) {
-                // Execute callback on main thread if running in a Bukkit environment
+                // Execute callback on global region scheduler if running in a Bukkit environment
                 if (CopySign.getInstance() != null) {
-                    org.bukkit.Bukkit.getScheduler().runTask(CopySign.getInstance(), () -> callback.accept(result));
+                    SchedulerUtil.runGlobal(CopySign.getInstance(), () -> callback.accept(result));
                 } else {
                     callback.accept(result);
                 }

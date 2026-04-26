@@ -1,10 +1,13 @@
 package us.ironcladnetwork.copySign.Util;
 
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import us.ironcladnetwork.copySign.CopySign;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -14,6 +17,8 @@ import java.util.Map;
 public class SoundManager {
     private final CopySign plugin;
     private final Map<String, Sound> soundCache = new HashMap<>();
+    private final Map<String, String> soundNameCache = new HashMap<>();
+    private Map<String, Sound> soundLookup = new HashMap<>();
     private boolean enabled = false;
     
     public SoundManager(CopySign plugin) {
@@ -27,12 +32,15 @@ public class SoundManager {
     private void initialize() {
         // Check if sounds are enabled in config
         enabled = plugin.getConfig().getBoolean("sign-interaction.sounds.enabled", true);
-        
+
         if (!enabled) {
             plugin.getLogger().info("Sound effects are disabled in configuration");
             return;
         }
-        
+
+        // Build the registry-based sound lookup map before caching configured sounds
+        buildSoundLookup();
+
         // Cache configured sounds
         cacheSoundIfValid("copy", plugin.getConfig().getString("sign-interaction.sounds.copy", "BLOCK_NOTE_BLOCK_PLING"));
         cacheSoundIfValid("paste", plugin.getConfig().getString("sign-interaction.sounds.paste", "BLOCK_NOTE_BLOCK_CHIME"));
@@ -53,26 +61,100 @@ public class SoundManager {
             plugin.getDebugLogger().debug("Sound '" + key + "' is disabled (empty string)");
             return;
         }
-        
-        try {
-            Sound sound = Sound.valueOf(soundName.toUpperCase());
+
+        Sound sound = lookupSound(soundName);
+        if (sound != null) {
             soundCache.put(key, sound);
+            soundNameCache.put(key, soundName);
             plugin.getDebugLogger().debug("Cached sound '" + key + "': " + soundName);
-        } catch (IllegalArgumentException e) {
-            // Try alternative sound names for version compatibility
-            String alternativeName = getAlternativeSoundName(soundName);
-            if (alternativeName != null) {
-                try {
-                    Sound sound = Sound.valueOf(alternativeName);
-                    soundCache.put(key, sound);
-                    plugin.getDebugLogger().debug("Cached sound '" + key + "' with alternative: " + alternativeName);
-                } catch (IllegalArgumentException e2) {
-                    plugin.getLogger().warning("Invalid sound name for '" + key + "': " + soundName);
-                }
-            } else {
-                plugin.getLogger().warning("Invalid sound name for '" + key + "': " + soundName);
+            return;
+        }
+
+        // Try alternative sound names for version compatibility
+        String alternativeName = getAlternativeSoundName(soundName);
+        if (alternativeName != null) {
+            sound = lookupSound(alternativeName);
+            if (sound != null) {
+                soundCache.put(key, sound);
+                soundNameCache.put(key, alternativeName);
+                plugin.getDebugLogger().debug("Cached sound '" + key + "' with alternative: " + alternativeName);
+                return;
             }
         }
+
+        plugin.getLogger().warning("Invalid sound name for '" + key + "': " + soundName);
+    }
+
+    /**
+     * Builds a lookup map from enum-style sound names to Sound objects by iterating
+     * the entire Registry.SOUNDS at initialization time.
+     * <p>
+     * This approach is necessary because the registry key format (e.g., "block.note_block.pling")
+     * cannot be reliably derived from the enum-style name (e.g., "BLOCK_NOTE_BLOCK_PLING")
+     * via simple string manipulation. Iterating the registry gives us the correct mapping.
+     * <p>
+     * The deprecated {@code sound.getKey()} call is intentional -- it is called once at init
+     * and the result is cached, matching the Phase 1 established pattern for soundNameCache.
+     */
+    @SuppressWarnings({"deprecation", "removal"})
+    private void buildSoundLookup() {
+        Map<String, Sound> lookup = new HashMap<>();
+        int count = 0;
+        for (Sound sound : Registry.SOUNDS) {
+            try {
+                NamespacedKey key = sound.getKey();
+                // Convert registry key (e.g., "block.note_block.pling")
+                // to enum-style name (e.g., "BLOCK_NOTE_BLOCK_PLING")
+                String enumStyleName = key.getKey().toUpperCase(Locale.ROOT).replace('.', '_');
+                lookup.put(enumStyleName, sound);
+                // Also store the raw registry key for direct lookups
+                lookup.put(key.getKey(), sound);
+                count++;
+            } catch (Exception e) {
+                // Skip sounds that can't be processed
+            }
+        }
+        this.soundLookup = lookup;
+        plugin.getDebugLogger().debug("Built sound lookup with " + count + " registry entries");
+    }
+
+    /**
+     * Looks up a Sound from the registry by name.
+     * Handles both enum-style names (BLOCK_NOTE_BLOCK_PLING) and
+     * namespaced keys (block.note_block.pling) and fully-qualified keys
+     * (minecraft:block.note_block.pling).
+     *
+     * @param soundName The sound name to look up
+     * @return The Sound, or null if not found
+     */
+    private Sound lookupSound(String soundName) {
+        if (soundName == null || soundName.isEmpty()) {
+            return null;
+        }
+
+        // Try exact match first (handles both enum-style and key-style as stored)
+        Sound sound = soundLookup.get(soundName);
+        if (sound != null) return sound;
+
+        // Try uppercase match (for case-insensitive enum names like "block_note_block_pling")
+        sound = soundLookup.get(soundName.toUpperCase(Locale.ROOT));
+        if (sound != null) return sound;
+
+        // Try lowercase match (for registry key-style names like "block.note_block.pling")
+        sound = soundLookup.get(soundName.toLowerCase(Locale.ROOT));
+        if (sound != null) return sound;
+
+        // Final fallback: try as a direct NamespacedKey (for "minecraft:block.note_block.pling" format)
+        try {
+            NamespacedKey key = NamespacedKey.fromString(soundName.toLowerCase(Locale.ROOT));
+            if (key != null) {
+                return Registry.SOUNDS.get(key);
+            }
+        } catch (Exception e) {
+            plugin.getDebugLogger().debug("Failed to parse sound as NamespacedKey: " + soundName);
+        }
+
+        return null;
     }
     
     /**
@@ -148,7 +230,7 @@ public class SoundManager {
         try {
             // Play sound at player location with default volume and pitch
             player.playSound(player.getLocation(), sound, 1.0f, 1.0f);
-            plugin.getDebugLogger().debug(player, "Played sound: " + sound.name());
+            plugin.getDebugLogger().debug(player, "Played sound: " + soundNameCache.getOrDefault(key, "unknown"));
         } catch (Exception e) {
             plugin.getDebugLogger().debug("Failed to play sound: " + e.getMessage(), e);
         }
@@ -159,6 +241,8 @@ public class SoundManager {
      */
     public void reload() {
         soundCache.clear();
+        soundNameCache.clear();
+        soundLookup.clear();
         initialize();
     }
     

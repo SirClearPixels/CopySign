@@ -18,9 +18,10 @@ import us.ironcladnetwork.copySign.Util.UpdateChecker;
 import us.ironcladnetwork.copySign.Util.DebugLogger;
 import us.ironcladnetwork.copySign.Integration.WorldGuardIntegration;
 import us.ironcladnetwork.copySign.Util.SoundManager;
+import us.ironcladnetwork.copySign.Util.VersionCompatibility;
 import us.ironcladnetwork.copySign.Util.MetricsManager;
-import us.ironcladnetwork.copySign.Util.ConfigValidator;
 import us.ironcladnetwork.copySign.Util.ConfigMigrator;
+import us.ironcladnetwork.copySign.Util.SchedulerUtil;
 
 import org.bukkit.configuration.ConfigurationSection;
 import java.util.HashMap;
@@ -134,14 +135,7 @@ public final class CopySign extends JavaPlugin {
         // Initialize configuration manager
         configManager = new ConfigManager(this);
         
-        // Perform comprehensive configuration validation
-        ConfigValidator validator = new ConfigValidator(this);
-        if (!validator.validate()) {
-            getLogger().severe("Critical configuration errors detected! Please fix them and restart the server.");
-            // Still continue loading but with warnings
-        }
-        
-        // Run the basic validation too
+        // Run the basic validation
         configManager.validateConfiguration();
         
         // Initialize debug logger
@@ -155,7 +149,10 @@ public final class CopySign extends JavaPlugin {
         
         // Initialize sound manager
         soundManager = new SoundManager(this);
-        
+
+        // Log detected server capabilities for admin visibility
+        VersionCompatibility.logCapabilities();
+
         // Initialize metrics manager
         metricsManager = new MetricsManager(this);
         
@@ -261,7 +258,7 @@ public final class CopySign extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new us.ironcladnetwork.copySign.Listeners.ServerTemplateGUIListener(serverTemplateManager), this);
         
         // Start periodic cooldown cleanup task (every 5 minutes)
-        getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+        SchedulerUtil.runAsyncTimer(this, () -> {
             // Snapshot config values on main thread for thread safety
             Map<String, Integer> cooldownConfig = new HashMap<>();
             configLock.readLock().lock();
@@ -278,13 +275,13 @@ public final class CopySign extends JavaPlugin {
             } finally {
                 configLock.readLock().unlock();
             }
-            
+
             // Pass the snapshotted config to cleanup method
             cooldownManager.cleanupExpiredCooldowns(cooldownConfig);
         }, 6000L, 6000L); // 6000 ticks = 5 minutes
         
         // Start periodic SignDataCache cleanup task (every 5 minutes)
-        getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+        SchedulerUtil.runAsyncTimer(this, () -> {
             SignDataCache.cleanupExpiredEntries();
         }, 6000L, 6000L); // 6000 ticks = 5 minutes
         
@@ -299,28 +296,26 @@ public final class CopySign extends JavaPlugin {
         int autoSaveInterval = configManager.getAutoSaveInterval();
         if (autoSaveInterval > 0) {
             long intervalTicks = autoSaveInterval * 60L * 20L; // Convert minutes to ticks
-            getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+            SchedulerUtil.runAsyncTimer(this, () -> {
                 long startTime = System.currentTimeMillis();
-                
+
                 // Perform saves asynchronously
                 boolean librarySuccess = signLibraryManager.saveConfigSync();
                 boolean toggleSuccess = toggleManager.saveConfigSync();
-                
+
                 long timeTaken = System.currentTimeMillis() - startTime;
-                
-                // Log results on main thread
-                getServer().getScheduler().runTask(this, () -> {
-                    if (librarySuccess && toggleSuccess) {
-                        debugLogger.debug("Auto-save completed successfully");
-                        debugLogger.debugPerformance("Auto-save", timeTaken);
-                    } else {
-                        getLogger().warning("Auto-save encountered errors - Library: " + 
-                            (librarySuccess ? "OK" : "FAILED") + ", Toggles: " + 
-                            (toggleSuccess ? "OK" : "FAILED"));
-                    }
-                });
+
+                // Log results - logging is safe to do async
+                if (librarySuccess && toggleSuccess) {
+                    debugLogger.debug("Auto-save completed successfully");
+                    debugLogger.debugPerformance("Auto-save", timeTaken);
+                } else {
+                    getLogger().warning("Auto-save encountered errors - Library: " +
+                        (librarySuccess ? "OK" : "FAILED") + ", Toggles: " +
+                        (toggleSuccess ? "OK" : "FAILED"));
+                }
             }, intervalTicks, intervalTicks);
-            
+
             getLogger().info("Auto-save enabled - saving every " + autoSaveInterval + " minutes");
         }
     }
@@ -383,11 +378,6 @@ public final class CopySign extends JavaPlugin {
             // Reload the main configuration
             reloadConfig();
             
-            // Validate the reloaded configuration
-            ConfigValidator validator = new ConfigValidator(this);
-            if (!validator.validate()) {
-                getLogger().severe("Configuration errors detected after reload!");
-            }
             
             // Reinitialize language messages with new config
             Lang.init(this);

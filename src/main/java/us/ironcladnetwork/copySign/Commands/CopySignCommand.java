@@ -340,42 +340,6 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(Lang.PLUGIN_RELOADED.getWithPrefix());
                 break;
             }
-            case "validate": {
-                // Check validate permission (same as reload for admin)
-                if (!Permissions.canReload(player)) {
-                    player.sendMessage(Lang.NO_PERMISSION_RELOAD.getWithPrefix());
-                    return true;
-                }
-                
-                // Perform validation
-                player.sendMessage(Lang.PREFIX.get() + "§eValidating configuration...");
-                us.ironcladnetwork.copySign.Util.ConfigValidator validator = 
-                    new us.ironcladnetwork.copySign.Util.ConfigValidator(us.ironcladnetwork.copySign.CopySign.getInstance());
-                
-                boolean valid = validator.validate();
-                
-                // Send results to player
-                if (valid) {
-                    player.sendMessage(Lang.PREFIX.get() + "§aConfiguration validation passed!");
-                } else {
-                    player.sendMessage(Lang.PREFIX.get() + "§cConfiguration has errors!");
-                    
-                    // Show errors
-                    for (String error : validator.getErrors()) {
-                        player.sendMessage("§c ▸ " + error);
-                    }
-                }
-                
-                // Show warnings if any
-                if (!validator.getWarnings().isEmpty()) {
-                    player.sendMessage(Lang.PREFIX.get() + "§eConfiguration warnings:");
-                    for (String warning : validator.getWarnings()) {
-                        player.sendMessage("§e ▸ " + warning);
-                    }
-                }
-                
-                break;
-            }
             case "confirm": {
                 // Handle confirmation
                 if (us.ironcladnetwork.copySign.CopySign.getConfirmationManager().hasPendingConfirmation(player.getUniqueId())) {
@@ -493,12 +457,6 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         if (Permissions.canReload(player) && 
             us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.reload", true)) {
             options.add("reload");
-        }
-        
-        // Validate command only available with copysign.reload permission and command toggle
-        if (Permissions.canReload(player) && 
-            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.validate", true)) {
-            options.add("validate");
         }
         
         // Templates command available with copysign.templates permission and command toggle
@@ -658,12 +616,6 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         if (Permissions.canReload(player) && 
             us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.reload", true)) {
             player.sendMessage(Lang.COMMAND_HELP_RELOAD.get());
-        }
-        
-        // Validate command (also admin)
-        if (Permissions.canReload(player) && 
-            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.validate", true)) {
-            player.sendMessage(Lang.COMMAND_HELP_VALIDATE.get());
         }
         
         // Template command (check various template permissions)

@@ -1,19 +1,20 @@
 package us.ironcladnetwork.copySign.Util;
 
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 import us.ironcladnetwork.copySign.CopySign;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages confirmation prompts for sensitive operations
+ * Manages confirmation prompts for sensitive operations.
+ * Thread-safe implementation using ConcurrentHashMap for Folia compatibility.
  */
 public class ConfirmationManager {
-    
-    private final Map<UUID, PendingConfirmation> pendingConfirmations = new HashMap<>();
+
+    private final Map<UUID, PendingConfirmation> pendingConfirmations = new ConcurrentHashMap<>();
+    private final Map<UUID, Object> timeoutTasks = new ConcurrentHashMap<>();
     private final CopySign plugin;
     
     public ConfirmationManager(CopySign plugin) {
@@ -29,23 +30,27 @@ public class ConfirmationManager {
      */
     public void requestConfirmation(Player player, String action, Runnable callback, int timeoutSeconds) {
         UUID playerId = player.getUniqueId();
-        
+
         // Cancel any existing confirmation
         cancelConfirmation(playerId);
-        
+
         // Create new confirmation
         PendingConfirmation confirmation = new PendingConfirmation(action, callback);
         pendingConfirmations.put(playerId, confirmation);
-        
-        // Schedule timeout
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (pendingConfirmations.remove(playerId) != null) {
+
+        // Schedule timeout using entity scheduler (player-specific operation)
+        Object timeoutTask = SchedulerUtil.runAtEntityDelayed(plugin, player, () -> {
+            if (pendingConfirmations.remove(playerId) != null) {
+                // Use entity scheduler to send message to player
+                SchedulerUtil.runAtEntity(plugin, player, () -> {
                     player.sendMessage("§cConfirmation timed out.");
-                }
+                });
+                timeoutTasks.remove(playerId);
             }
-        }.runTaskLater(plugin, timeoutSeconds * 20L);
+        }, timeoutSeconds * 20L);
+
+        // Store the task so we can cancel it if needed
+        timeoutTasks.put(playerId, timeoutTask);
     }
     
     /**
@@ -71,6 +76,11 @@ public class ConfirmationManager {
      * Cancel a pending confirmation
      */
     public boolean cancelConfirmation(UUID playerId) {
+        // Cancel the timeout task if it exists
+        Object timeoutTask = timeoutTasks.remove(playerId);
+        if (timeoutTask != null) {
+            SchedulerUtil.cancelTask(timeoutTask);
+        }
         return pendingConfirmations.remove(playerId) != null;
     }
     
@@ -86,6 +96,9 @@ public class ConfirmationManager {
      * Clear all pending confirmations (for plugin disable)
      */
     public void clearAll() {
+        // Cancel all timeout tasks
+        timeoutTasks.values().forEach(SchedulerUtil::cancelTask);
+        timeoutTasks.clear();
         pendingConfirmations.clear();
     }
     

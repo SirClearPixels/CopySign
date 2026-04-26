@@ -1,0 +1,40 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local AI / planning artifacts
+.claude/
+.planning/
+
+# Local docs / scratch notes (kept out of public repo)
+@*.md
+*Summary*.md
+*Plan*.md
+*Review*.md
+RELEASE_NOTES_*.md
+test-checklist.md
+PALE_OAK_SUPPORT.md
+FOLIA_MIGRATION_SUMMARY.md
+UPDATE_SUMMARY_*.md
+CONFIG_FIX_SUMMARY.md
