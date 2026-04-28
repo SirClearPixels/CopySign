@@ -1,5 +1,9 @@
 # CopySign Plugin
 
+
+[![Spigot](https://img.shields.io/badge/Spigot-ED8106?style=for-the-badge&logo=spigotmc&logoColor=white)](https://www.spigotmc.org/resources/copysign.134640/)
+[![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/plugin/copysign)
+
 A powerful Minecraft Spigot plugin that allows players to copy and paste sign text, colors, and glow states with NBT data storage and a personal sign library system.
 
 **Version 2.3.0** - Full compatibility with Minecraft 1.21.11, Folia support, per-side sign glow, and Adventure Component API!
