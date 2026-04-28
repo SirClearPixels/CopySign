@@ -1,8 +1,11 @@
 # CopySign Plugin
 
-
 [![Spigot](https://img.shields.io/badge/Spigot-ED8106?style=for-the-badge&logo=spigotmc&logoColor=white)](https://www.spigotmc.org/resources/copysign.134640/)
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/plugin/copysign)
+
+[![Modrinth Downloads](https://img.shields.io/modrinth/dt/copysign?style=flat-square&logo=modrinth&color=00AF5C&label=Modrinth)](https://modrinth.com/plugin/copysign)
+[![Spigot Downloads](https://img.shields.io/spiget/downloads/134640?style=flat-square&logo=spigotmc&color=ED8106&label=Spigot)](https://www.spigotmc.org/resources/copysign.134640/)
+[![Spigot Rating](https://img.shields.io/spiget/stars/134640?style=flat-square&logo=spigotmc&color=ED8106)](https://www.spigotmc.org/resources/copysign.134640/)
 
 A powerful Minecraft Spigot plugin that allows players to copy and paste sign text, colors, and glow states with NBT data storage and a personal sign library system.
 
