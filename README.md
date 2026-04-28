@@ -7,6 +7,9 @@
 [![Spigot Downloads](https://img.shields.io/spiget/downloads/134640?style=flat-square&logo=spigotmc&color=ED8106&label=Spigot)](https://www.spigotmc.org/resources/copysign.134640/)
 [![Spigot Rating](https://img.shields.io/spiget/stars/134640?style=flat-square&logo=spigotmc&color=ED8106)](https://www.spigotmc.org/resources/copysign.134640/)
 
+[![Hangar](https://img.shields.io/badge/Hangar-004C99?style=for-the-badge&logo=papermc&logoColor=white)](https://hangar.papermc.io/SirClearPixels/CopySign)
+[![Hangar Downloads](https://img.shields.io/hangar/dt/CopySign?style=for-the-badge&logo=papermc&color=004C99&label=Downloads)](https://hangar.papermc.io/SirClearPixels/CopySign)
+
 A powerful Minecraft Spigot plugin that allows players to copy and paste sign text, colors, and glow states with NBT data storage and a personal sign library system.
 
 **Version 2.3.0** - Full compatibility with Minecraft 1.21.11, Folia support, per-side sign glow, and Adventure Component API!
