@@ -12,8 +12,7 @@
 
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![Paper](https://img.shields.io/badge/Paper-1.21.x-0099CC?style=flat-square&logo=papermc&logoColor=white)](https://papermc.io/)
-[![Folia](https://img.shields.io/badge/Folia-Compatible-2A2C2A?style=flat-square&logo=papermc&logoColor=white)](https://papermc.io/software/folia)
-[![License](https://img.shields.io/github/license/SirClearPixels/CopySign?style=flat-square&color=blue)](https://github.com/SirClearPixels/CopySign/blob/main/LICENSE)
+[![Folia](https://img.shields.io/badge/Folia-Compatible-2A2C2A?style=flat-square&logo=papermc&logoColor=white)](https://papermc.io/software/folia
 
 A powerful Minecraft Spigot plugin that allows players to copy and paste sign text, colors, and glow states with NBT data storage and a personal sign library system.
 
