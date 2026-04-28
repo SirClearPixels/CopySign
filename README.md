@@ -1,4 +1,4 @@
-# CopySign Plugin
+# CopySign
 
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/plugin/copysign)
 [![Modrinth Downloads](https://img.shields.io/modrinth/dt/copysign?style=flat-square&logo=modrinth&color=00AF5C&label=Modrinth)](https://modrinth.com/plugin/copysign)
