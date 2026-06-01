@@ -11,7 +11,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -452,9 +456,135 @@ public class SignLibraryManager {
         }
         saveConfigAsync(null); // No callback needed for internal API
     }
-    
 
-    
+    /**
+     * Outcome of a personal-library re-key attempt.
+     *
+     * @see #rekey(ConfigurationSection, String, String)
+     */
+    public enum RenameStatus {
+        /** The sign was re-keyed: data written under the new name, old name freed. */
+        OK,
+        /** No sign existed under the old name; nothing was written. */
+        NOT_FOUND,
+        /** A sign already exists under the new name; nothing was written (never overwrite). */
+        TARGET_EXISTS,
+        /** The new name failed validation; nothing was written. */
+        INVALID_NAME
+    }
+
+    /**
+     * Re-keys a saved sign entry within a single owner's section, preserving the stored
+     * {@link SavedSignData} and freeing the old name (LIB-01, D-09).
+     * <p>
+     * This is a pure, static, side-effect-free helper: no lock, sound, metrics, Lang, or
+     * scheduler interaction. It operates only on the supplied {@link ConfigurationSection},
+     * which makes it unit-testable against a plain {@code YamlConfiguration} section without
+     * constructing the manager. It never reads or writes any {@code format_version} key —
+     * Phase 4 versioned only the on-item PDC payload, not the library/template YAML (D-09).
+     *
+     * @param ownerSection The owner's section (e.g. {@code players.<uuid>}); may be null.
+     * @param oldName      The existing sign name to move.
+     * @param newName      The target name to move the data to.
+     * @return {@link RenameStatus#NOT_FOUND} if the old name is absent (or owner is null);
+     *         {@link RenameStatus#INVALID_NAME} if the new name fails validation (D-04);
+     *         {@link RenameStatus#TARGET_EXISTS} if the new name is already taken (D-05);
+     *         {@link RenameStatus#OK} on a successful re-key.
+     */
+    static RenameStatus rekey(ConfigurationSection ownerSection, String oldName, String newName) {
+        if (ownerSection == null || !ownerSection.contains(oldName)) {
+            return RenameStatus.NOT_FOUND;
+        }
+        // Manager-layer validation of the new name (D-04, LIB-04) — runs before any write.
+        if (!ErrorHandler.isValidFileName(newName, 32)) {
+            return RenameStatus.INVALID_NAME;
+        }
+        // Hard reject a collision; never overwrite an existing target (D-05).
+        if (ownerSection.contains(newName)) {
+            return RenameStatus.TARGET_EXISTS;
+        }
+        SavedSignData savedData =
+                SavedSignData.loadFromConfigurationSection(ownerSection.getConfigurationSection(oldName));
+        savedData.saveToConfigurationSection(ownerSection.createSection(newName));
+        // Free the old name (D-09).
+        ownerSection.set(oldName, null);
+        return RenameStatus.OK;
+    }
+
+    /**
+     * Renames a saved sign for the specified player, preserving the stored data and freeing
+     * the old name (LIB-01). Re-keys under {@link #configLock} via the static
+     * {@link #rekey(ConfigurationSection, String, String)} helper, then persists
+     * asynchronously and reports the outcome to the player.
+     *
+     * @param player  The player whose library is being modified.
+     * @param oldName The existing sign name.
+     * @param newName The new sign name.
+     */
+    public void renameSign(Player player, String oldName, String newName) {
+        UUID playerId = player.getUniqueId();
+
+        RenameStatus status;
+        configLock.lock();
+        try {
+            ConfigurationSection playerSection =
+                    signLibraryConfig.getConfigurationSection("players." + playerId.toString());
+            status = rekey(playerSection, oldName, newName);
+        } finally {
+            configLock.unlock();
+        }
+
+        switch (status) {
+            case OK:
+                saveConfigAsync(success -> {
+                    if (success) {
+                        player.sendMessage(Lang.SIGN_RENAMED.formatWithPrefix("%old%", oldName, "%new%", newName));
+                    } else {
+                        player.sendMessage(Lang.PREFIX.get() + "§cFailed to rename sign. Please try again.");
+                    }
+                });
+                break;
+            case NOT_FOUND:
+                player.sendMessage(Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
+                break;
+            case TARGET_EXISTS:
+                player.sendMessage(Lang.SIGN_RENAME_TARGET_EXISTS.getWithPrefix());
+                break;
+            case INVALID_NAME:
+                player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
+                break;
+        }
+    }
+
+    /**
+     * Case-insensitive substring filter over a set of saved-sign names (LIB-03, D-07).
+     * <p>
+     * Pure in-memory helper with no Bukkit dependency, so it is unit-testable without a
+     * server. A null or blank query returns all names.
+     *
+     * @param names The candidate names to filter.
+     * @param query The case-insensitive substring to match anywhere in each name.
+     * @return The subset of names whose lowercase form contains the lowercase query;
+     *         all names if the query is null or blank.
+     */
+    public static List<String> filterByName(Collection<String> names, String query) {
+        List<String> result = new ArrayList<>();
+        if (names == null) {
+            return result;
+        }
+        if (query == null || query.trim().isEmpty()) {
+            result.addAll(names);
+            return result;
+        }
+        String needle = query.toLowerCase(Locale.ENGLISH);
+        for (String name : names) {
+            if (name != null && name.toLowerCase(Locale.ENGLISH).contains(needle)) {
+                result.add(name);
+            }
+        }
+        return result;
+    }
+
     /**
      * Validates that a sign type string is valid.
      * 

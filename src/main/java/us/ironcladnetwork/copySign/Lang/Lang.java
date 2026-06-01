@@ -105,7 +105,14 @@ public enum Lang {
     SIGN_NAME_NOT_IDENTIFIED("messages.SIGN_NAME_NOT_IDENTIFIED"),
     SIGN_NOT_FOUND("messages.SIGN_NOT_FOUND"),
     SIGN_LOADED_TO_HELD("messages.SIGN_LOADED_TO_HELD"),
-    
+
+    // Rename + search messages (Phase 5: Library & Template Management)
+    SIGN_RENAMED("messages.SIGN_RENAMED"),
+    SIGN_RENAME_TARGET_EXISTS("messages.SIGN_RENAME_TARGET_EXISTS"),
+    LIBRARY_SEARCH_NO_MATCH("messages.LIBRARY_SEARCH_NO_MATCH"),
+    TEMPLATE_RENAMED("messages.TEMPLATE_RENAMED"),
+    TEMPLATE_RENAME_TARGET_EXISTS("messages.TEMPLATE_RENAME_TARGET_EXISTS"),
+
     // Cooldown messages
     COOLDOWN_MESSAGE("messages.COOLDOWN_MESSAGE"),
     COOLDOWN_SIGN_COPY("messages.COOLDOWN_SIGN_COPY"),
