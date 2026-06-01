@@ -90,6 +90,11 @@ messages:
   SIGN_RENAME_CANCELLED: "&cRename cancelled."
   SIGN_RENAME_SUCCESS: "&cSign renamed successfully!"
   SIGN_NAME_NOT_IDENTIFIED: "&cCould not identify sign name!"
+  SIGN_RENAMED: "&aRenamed '%old%' to '%new%'."
+  SIGN_RENAME_TARGET_EXISTS: "&cA sign named that already exists. Choose a different name."
+
+  # Library Search
+  LIBRARY_SEARCH_NO_MATCH: "&eNo saved signs match \"%query%\"."
   
   # ========================================
   # TEMPLATE MESSAGES
@@ -103,6 +108,8 @@ messages:
   TEMPLATE_SAVE_SUCCESS: "&aServer template '%name%' saved successfully!"
   TEMPLATE_LOADED: "&aTemplate '%name%' loaded onto your sign!"
   TEMPLATE_LOADED_TO_SIGN: "&aServer template '%name%' loaded to your held sign!"
+  TEMPLATE_RENAMED: "&aRenamed template '%old%' to '%new%'."
+  TEMPLATE_RENAME_TARGET_EXISTS: "&cA template named that already exists. Choose a different name."
   
   # Template Errors
   TEMPLATE_NOT_FOUND: "&cTemplate '%name%' not found!"

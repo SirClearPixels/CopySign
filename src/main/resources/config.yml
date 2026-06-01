@@ -106,6 +106,7 @@ cooldowns:
   delete: 3   # Cooldown for deleting from library
   clear: 1    # Cooldown for clearing sign data
   library: 1  # Cooldown for opening library GUI
+  rename: 2   # Cooldown for renaming a saved sign
 
 # =============================================================================
 # SIGN INTERACTION SETTINGS
