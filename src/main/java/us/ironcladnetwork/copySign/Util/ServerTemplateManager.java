@@ -239,6 +239,98 @@ public class ServerTemplateManager {
     }
 
     /**
+     * Outcome of a template re-key (rename) attempt.
+     */
+    public enum RenameStatus {
+        /** The template was re-keyed: data written under the new name, old name freed. */
+        OK,
+        /** No template existed under the old name; nothing was written. */
+        NOT_FOUND,
+        /** A template already exists under the new name; nothing was written (never overwrite). */
+        TARGET_EXISTS,
+        /** The new name failed validation; nothing was written. */
+        INVALID_NAME
+    }
+
+    /**
+     * Re-keys a template entry within the templates section, preserving the stored
+     * {@link SavedSignData} and freeing the old name (LIB-02, D-09).
+     * <p>
+     * This is a pure, static, side-effect-free helper: no lock, sound, metrics, Lang, or
+     * scheduler interaction. It operates only on the supplied {@link ConfigurationSection},
+     * which makes it unit-testable against a plain {@code YamlConfiguration} section without
+     * constructing the manager (whose constructor needs live singletons). It never reads or
+     * writes any version-marker key — Phase 4 versioned only the on-item PDC payload, not the
+     * library/template YAML (D-09).
+     *
+     * @param templatesSection The {@code templates} section; may be null.
+     * @param oldName          The existing template name to move.
+     * @param newName          The target name to move the data to.
+     * @return {@link RenameStatus#NOT_FOUND} if the old name is absent (or section is null);
+     *         {@link RenameStatus#INVALID_NAME} if the new name fails validation (D-04);
+     *         {@link RenameStatus#TARGET_EXISTS} if the new name is already taken (D-05);
+     *         {@link RenameStatus#OK} on a successful re-key.
+     */
+    static RenameStatus rekey(ConfigurationSection templatesSection, String oldName, String newName) {
+        if (templatesSection == null || !templatesSection.contains(oldName)) {
+            return RenameStatus.NOT_FOUND;
+        }
+        // Manager-layer validation of the new name (D-04, LIB-04) — runs before any write.
+        if (!ErrorHandler.isValidFileName(newName, 32)) {
+            return RenameStatus.INVALID_NAME;
+        }
+        // Hard reject a collision; never overwrite an existing target (D-05).
+        if (templatesSection.contains(newName)) {
+            return RenameStatus.TARGET_EXISTS;
+        }
+        SavedSignData savedData =
+                SavedSignData.loadFromConfigurationSection(templatesSection.getConfigurationSection(oldName));
+        savedData.saveToConfigurationSection(templatesSection.createSection(newName));
+        // Free the old name (D-09).
+        templatesSection.set(oldName, null);
+        return RenameStatus.OK;
+    }
+
+    /**
+     * Renames a server template in place, preserving the stored data and freeing the old
+     * name (LIB-02). Admin-gated. Mirrors this manager's own lockless, synchronous
+     * persistence style (no re-entrant lock; synchronous {@link #saveConfig()}) — it
+     * deliberately does NOT adopt {@code SignLibraryManager}'s locking/async pattern (D-10
+     * caveat). Rename is instant with no confirmation prompt (D-02).
+     *
+     * @param player  The player attempting the rename (must hold {@code copysign.admin}).
+     * @param oldName The existing template name.
+     * @param newName The new template name.
+     * @return true if the template was renamed, false on any rejection.
+     */
+    public boolean renameTemplate(Player player, String oldName, String newName) {
+        // Admin gate first (LIB-02 — templates stay admin-only).
+        if (!player.hasPermission(Permissions.ADMIN)) {
+            player.sendMessage(Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
+            return false;
+        }
+
+        ConfigurationSection templatesSection = templateConfig.getConfigurationSection("templates");
+        RenameStatus status = rekey(templatesSection, oldName, newName);
+        switch (status) {
+            case OK:
+                saveConfig();
+                player.sendMessage(Lang.TEMPLATE_RENAMED.formatWithPrefix("%old%", oldName, "%new%", newName));
+                return true;
+            case NOT_FOUND:
+                player.sendMessage(Lang.TEMPLATE_NOT_FOUND.formatWithPrefix("%name%", oldName));
+                return false;
+            case TARGET_EXISTS:
+                player.sendMessage(Lang.TEMPLATE_RENAME_TARGET_EXISTS.getWithPrefix());
+                return false;
+            case INVALID_NAME:
+            default:
+                player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
+                return false;
+        }
+    }
+
+    /**
      * Reloads the templates from file.
      */
     public void reload() {
