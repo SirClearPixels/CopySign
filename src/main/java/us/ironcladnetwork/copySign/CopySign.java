@@ -108,7 +108,13 @@ public final class CopySign extends JavaPlugin {
         // Save default configurations
         saveDefaultConfig();
         saveResource("messages.yml", false);
-        
+
+        // Initialize the native PersistentDataContainer storage keys before any
+        // listener/manager reads or writes copied-sign item data. This replaces the
+        // former hard dependency on the NBT-API plugin (now an optional softdepend
+        // used only to migrate items copied with CopySign <= 2.3.0).
+        us.ironcladnetwork.copySign.Util.SignItemStorage.init(this);
+
         // Initialize toggle manager to load players.yml state (and create it if missing)
         toggleManager = new CopySignToggleManager(getDataFolder(), this);
         // Initialize the sign library manager using savedSigns.yml.
@@ -256,6 +262,9 @@ public final class CopySign extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new us.ironcladnetwork.copySign.Listeners.PlayerQuitListener(), this);
         // Register the ServerTemplateGUIListener
         getServer().getPluginManager().registerEvents(new us.ironcladnetwork.copySign.Listeners.ServerTemplateGUIListener(serverTemplateManager), this);
+        // Register the migration listener that upgrades legacy NBT-API copied-sign
+        // items to the native PDC format when a container is opened.
+        getServer().getPluginManager().registerEvents(new us.ironcladnetwork.copySign.Listeners.SignMigrationListener(), this);
         
         // Start periodic cooldown cleanup task (every 5 minutes)
         SchedulerUtil.runAsyncTimer(this, () -> {

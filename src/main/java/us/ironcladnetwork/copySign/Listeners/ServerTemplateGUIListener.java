@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
-import de.tr7zw.nbtapi.NBTItem;
+import us.ironcladnetwork.copySign.Util.SignItemData;
+import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -70,8 +71,7 @@ public class ServerTemplateGUIListener implements Listener {
                 return;
             }
             
-            NBTItem nbtItem = new NBTItem(heldItem);
-            if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack")) {
+            if (!SignItemStorage.has(heldItem)) {
                 player.sendMessage(Lang.TEMPLATE_NO_DATA_ERROR.getWithPrefix());
                 return;
             }
@@ -124,36 +124,22 @@ public class ServerTemplateGUIListener implements Listener {
                     return;
                 }
                 
-                // Apply template data to held sign with enhanced per-side glow support
-                NBTItem nbtItem = new NBTItem(heldItem);
-                
-                // Clear any existing NBT data first
-                nbtItem.removeKey("copiedSignFront");
-                nbtItem.removeKey("copiedSignBack");
-                nbtItem.removeKey("copiedSignFrontColor");
-                nbtItem.removeKey("copiedSignBackColor");
-                nbtItem.removeKey("signGlowing");
-                nbtItem.removeKey("frontGlowing");
-                nbtItem.removeKey("backGlowing");
-                nbtItem.removeKey("signType");
-                
-                nbtItem.setString("copiedSignFront", String.join("\n", templateData.getFront()));
-                nbtItem.setString("copiedSignBack", String.join("\n", templateData.getBack()));
-                nbtItem.setString("copiedSignFrontColor", templateData.getFrontColor());
-                nbtItem.setString("copiedSignBackColor", templateData.getBackColor());
-                
-                // Store per-side glow states
-                nbtItem.setBoolean("frontGlowing", templateData.isFrontGlowing());
-                nbtItem.setBoolean("backGlowing", templateData.isBackGlowing());
-                nbtItem.setBoolean("signGlowing", templateData.isGlowing()); // Legacy compatibility
-                
-                nbtItem.setString("signType", templateData.getSignType());
-                
-                // Update item with premium lore showing ONLY template name (no physical item duplication)
-                ItemStack updatedItem = nbtItem.getItem();
-                ItemMeta updatedMeta = updatedItem.getItemMeta();
+                // Apply template data to held sign via PDC (replacing any existing payload).
+                SignItemData itemData = new SignItemData(
+                    String.join("\n", templateData.getFront()),
+                    String.join("\n", templateData.getBack()),
+                    templateData.getFrontColor(),
+                    templateData.getBackColor(),
+                    templateData.isFrontGlowing(),
+                    templateData.isBackGlowing(),
+                    templateData.getSignType());
+
+                // Write data + premium lore onto the same meta.
+                ItemMeta updatedMeta = heldItem.getItemMeta();
                 if (updatedMeta != null) {
-                    // Use simple SignLoreBuilder with ONLY template name - Minecraft handles physical item name
+                    SignItemStorage.clear(updatedMeta);
+                    SignItemStorage.write(updatedMeta, itemData);
+
                     List<String> updatedLore = SignLoreBuilder.buildPremiumSignLore(
                         templateName,
                         templateData.getFront(),
@@ -165,12 +151,12 @@ public class ServerTemplateGUIListener implements Listener {
                         templateData.getSignType(),
                         "Server Template"
                     );
-                    
+
                     updatedMeta.setLore(updatedLore);
-                    updatedItem.setItemMeta(updatedMeta);
+                    heldItem.setItemMeta(updatedMeta);
                 }
-                
-                player.getInventory().setItemInMainHand(updatedItem);
+
+                player.getInventory().setItemInMainHand(heldItem);
                 player.closeInventory();
                 player.sendMessage(Lang.TEMPLATE_LOADED_TO_SIGN.formatWithPrefix("%name%", templateName));
                 

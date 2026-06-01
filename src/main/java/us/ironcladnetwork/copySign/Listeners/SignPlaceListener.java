@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
-import de.tr7zw.nbtapi.NBTItem;
+import us.ironcladnetwork.copySign.Util.SignItemData;
+import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
@@ -57,10 +58,11 @@ public class SignPlaceListener implements Listener {
         if (itemStack == null || itemStack.getType() == Material.AIR)
             return;
 
-        NBTItem nbtItem = new NBTItem(itemStack);
-        // Check that both front and back text have been stored via NBT.
-        if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack"))
+        // Read the copied sign payload (PDC, with legacy NBT-API fallback).
+        java.util.Optional<SignItemData> copiedOpt = SignItemStorage.read(itemStack);
+        if (copiedOpt.isEmpty())
             return;
+        SignItemData copied = copiedOpt.get();
         
         Player player = event.getPlayer();
         
@@ -94,18 +96,18 @@ public class SignPlaceListener implements Listener {
         Sign sign = (Sign) block.getState();
         
         // Apply the dye colors directly to the sign
-        if (nbtItem.hasTag("copiedSignFrontColor")) {
+        if (copied.hasFrontColor()) {
             try {
-                DyeColor frontDyeColor = DyeColor.valueOf(nbtItem.getString("copiedSignFrontColor"));
+                DyeColor frontDyeColor = DyeColor.valueOf(copied.getFrontColor());
                 sign.getSide(Side.FRONT).setColor(frontDyeColor);
             } catch (IllegalArgumentException e) {
                 // Invalid dye color, skip it
             }
         }
-        
-        if (nbtItem.hasTag("copiedSignBackColor")) {
+
+        if (copied.hasBackColor()) {
             try {
-                DyeColor backDyeColor = DyeColor.valueOf(nbtItem.getString("copiedSignBackColor"));
+                DyeColor backDyeColor = DyeColor.valueOf(copied.getBackColor());
                 sign.getSide(Side.BACK).setColor(backDyeColor);
             } catch (IllegalArgumentException e) {
                 // Invalid dye color, skip it
@@ -116,22 +118,12 @@ public class SignPlaceListener implements Listener {
         sign.update();
 
         // Cache the text data for the SignChangeEvent
-        String copiedSignFront = nbtItem.getString("copiedSignFront");
-        String copiedSignBack = nbtItem.getString("copiedSignBack");
+        String copiedSignFront = copied.getFront();
+        String copiedSignBack = copied.getBack();
 
-        // Read per-side glow states, falling back to legacy 'signGlowing' tag
-        boolean frontGlowing;
-        boolean backGlowing;
-        if (nbtItem.hasTag("frontGlowing") || nbtItem.hasTag("backGlowing")) {
-            // New per-side format
-            frontGlowing = nbtItem.hasTag("frontGlowing") ? nbtItem.getBoolean("frontGlowing") : false;
-            backGlowing = nbtItem.hasTag("backGlowing") ? nbtItem.getBoolean("backGlowing") : false;
-        } else {
-            // Legacy single-glow format
-            boolean signGlowing = nbtItem.hasTag("signGlowing") ? nbtItem.getBoolean("signGlowing") : false;
-            frontGlowing = signGlowing;
-            backGlowing = signGlowing;
-        }
+        // Per-side glow states (legacy fallback already resolved during read)
+        boolean frontGlowing = copied.isFrontGlowing();
+        boolean backGlowing = copied.isBackGlowing();
 
         String[] frontLines = copiedSignFront.split("\n", -1);
         frontLines = Util.preserveColors(frontLines);

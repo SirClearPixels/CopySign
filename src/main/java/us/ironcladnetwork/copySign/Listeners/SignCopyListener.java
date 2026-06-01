@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
-import de.tr7zw.nbtapi.NBTItem;
+import us.ironcladnetwork.copySign.Util.SignItemData;
+import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
@@ -185,70 +186,60 @@ public class SignCopyListener implements Listener {
         // Copy the per-side glow states from the sign using enhanced version-compatible methods
         boolean frontGlowing = VersionCompatibility.isSignGlowingFront(sign);
         boolean backGlowing = VersionCompatibility.isSignGlowingBack(sign);
-        boolean legacyGlowing = frontGlowing || backGlowing; // Legacy compatibility
 
         // If the player lacks permission to copy glow, disable it
         if (!Permissions.canCopyGlow(player) || !CopySign.getInstance().getConfigManager().isCopyGlowEnabled()) {
             frontGlowing = false;
             backGlowing = false;
-            legacyGlowing = false;
         }
 
-        // Use NBT-API to store the copied sign text and side colors onto the held sign item.
+        // Store the copied sign text and side colors onto the held sign item using
+        // the native PersistentDataContainer (via SignItemStorage).
         try {
-            // Validate sign text before storing in NBT
+            // Validate sign text before storing
             String frontTextStr = frontText.toString();
             String backTextStr = backText.toString();
             if (!NBTValidationUtil.validateNBTData(frontTextStr) || !NBTValidationUtil.validateNBTData(backTextStr)) {
                 player.sendMessage(Lang.PREFIX.get() + "§cSign text too large to copy");
                 return;
             }
-            
-            NBTItem nbtItem = new NBTItem(heldItem);
-            nbtItem.setString("copiedSignFront", frontTextStr);
-            nbtItem.setString("copiedSignBack", backTextStr);
-            // Only store color information if colors were copied
-            if (frontColor != null) {
-                nbtItem.setString("copiedSignFrontColor", frontColor.name());
-            }
-            if (backColor != null) {
-                nbtItem.setString("copiedSignBackColor", backColor.name());
-            }
-            // Store per-side glow states with legacy compatibility
-            nbtItem.setBoolean("frontGlowing", frontGlowing);
-            nbtItem.setBoolean("backGlowing", backGlowing);
-            nbtItem.setBoolean("signGlowing", legacyGlowing); // Legacy compatibility
-            // Store the sign type so that later paste or change events can verify the type if desired.
-            nbtItem.setString("signType", clickedHanging ? "hanging" : "regular");
 
-            // Get the updated item from NBTItem.
-            ItemStack updatedItem = nbtItem.getItem();
+            SignItemData data = new SignItemData(
+                frontTextStr,
+                backTextStr,
+                frontColor != null ? frontColor.name() : null,
+                backColor != null ? backColor.name() : null,
+                frontGlowing,
+                backGlowing,
+                clickedHanging ? "hanging" : "regular");
 
-            // Update item meta with premium lore showing ONLY content identifier (no physical item duplication)
-            ItemMeta meta = updatedItem.getItemMeta();
+            // Write data and premium lore onto the same meta to avoid a double fetch.
+            ItemMeta meta = heldItem.getItemMeta();
             if (meta != null) {
-                String[] frontLines = frontText.toString().split("\n");
-                String[] backLines = backText.toString().split("\n");
-                
+                SignItemStorage.write(meta, data);
+
+                String[] frontLines = frontTextStr.split("\n");
+                String[] backLines = backTextStr.split("\n");
+
                 // Use simple SignLoreBuilder with ONLY content identifier - Minecraft handles physical item name
                 List<String> lore = SignLoreBuilder.buildPremiumSignLore(
                     "Copied Sign",
-                    frontLines, 
-                    backLines, 
-                    frontColor != null ? frontColor.name() : null, 
-                    backColor != null ? backColor.name() : null, 
+                    frontLines,
+                    backLines,
+                    frontColor != null ? frontColor.name() : null,
+                    backColor != null ? backColor.name() : null,
                     frontGlowing,
                     backGlowing,
                     clickedHanging ? "hanging" : "regular",
                     "Copied"
                 );
-                
+
                 meta.setLore(lore);
-                updatedItem.setItemMeta(meta);
+                heldItem.setItemMeta(meta);
             }
-            
-            // Replace the held sign item with the updated item (with lore metadata).
-            player.getInventory().setItemInMainHand(updatedItem);
+
+            // The held item now carries the copied data + lore.
+            player.getInventory().setItemInMainHand(heldItem);
 
             player.sendMessage(Lang.SIGN_COPIED.getWithPrefix());
             

@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Util;
 
-import de.tr7zw.nbtapi.NBTItem;
+import us.ironcladnetwork.copySign.Util.SignItemData;
+import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -215,12 +216,13 @@ public class SignLibraryManager {
                 return;
             }
             
-            NBTItem nbtItem = new NBTItem(signItem);
-            // Ensure required NBT tags are present.
-            if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack")) {
+            // Read the copied-sign payload (PDC, with legacy NBT-API fallback).
+            java.util.Optional<SignItemData> copiedOpt = SignItemStorage.read(signItem);
+            if (copiedOpt.isEmpty()) {
                 player.sendMessage(Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
                 return;
             }
+            SignItemData copied = copiedOpt.get();
             
                 // Check max saved signs limit (permission-aware)
             int configDefault = plugin.getConfigInt("library.max-saved-signs", 50);
@@ -234,9 +236,9 @@ public class SignLibraryManager {
                 }
             }
             
-            // Extract sign information from NBT.
-            String copiedSignFront = nbtItem.getString("copiedSignFront");
-            String copiedSignBack = nbtItem.getString("copiedSignBack");
+            // Extract sign information from the copied payload.
+            String copiedSignFront = copied.getFront();
+            String copiedSignBack = copied.getBack();
             
             // Validate NBT data for security
             if (!NBTValidationUtil.validateNBTData(copiedSignFront) || !NBTValidationUtil.validateNBTData(copiedSignBack)) {
@@ -244,8 +246,8 @@ public class SignLibraryManager {
                 return;
             }
             
-            String copiedFrontColor = nbtItem.hasTag("copiedSignFrontColor") ? nbtItem.getString("copiedSignFrontColor") : "OAK";
-            String copiedBackColor = nbtItem.hasTag("copiedSignBackColor") ? nbtItem.getString("copiedSignBackColor") : "OAK";
+            String copiedFrontColor = copied.hasFrontColor() ? copied.getFrontColor() : "OAK";
+            String copiedBackColor = copied.hasBackColor() ? copied.getBackColor() : "OAK";
             
             // Validate color values
             if (!SignValidationUtil.isValidDyeColor(copiedFrontColor) || !SignValidationUtil.isValidDyeColor(copiedBackColor)) {
@@ -253,8 +255,9 @@ public class SignLibraryManager {
                 return;
             }
             
-            boolean signGlowing = nbtItem.hasTag("signGlowing") && nbtItem.getBoolean("signGlowing");
-            String signType = nbtItem.hasTag("signType") ? nbtItem.getString("signType") : "regular";
+            boolean frontGlowing = copied.isFrontGlowing();
+            boolean backGlowing = copied.isBackGlowing();
+            String signType = copied.getSignType();
             
             // Validate sign type
             if (!isValidSignType(signType)) {
@@ -283,8 +286,8 @@ public class SignLibraryManager {
             String[] frontLines = copiedSignFront.split("\n", -1);
             String[] backLines = copiedSignBack.split("\n", -1);
 
-            // Create a SavedSignData instance using the extracted data.
-            SavedSignData savedData = new SavedSignData(frontLines, backLines, signGlowing, copiedFrontColor, copiedBackColor, signType, lore);
+            // Create a SavedSignData instance using the extracted data (per-side glow preserved).
+            SavedSignData savedData = new SavedSignData(frontLines, backLines, frontGlowing, backGlowing, copiedFrontColor, copiedBackColor, signType, lore);
 
             // Save the data under the player's UUID and the provided sign name.
             // Use lock for thread-safe access to signLibraryConfig

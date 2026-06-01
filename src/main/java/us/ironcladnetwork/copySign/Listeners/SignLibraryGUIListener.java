@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
-import de.tr7zw.nbtapi.NBTItem;
+import us.ironcladnetwork.copySign.Util.SignItemData;
+import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -134,35 +135,22 @@ public class SignLibraryGUIListener implements Listener {
                     return;
                 }
                 
-                // Apply sign data to held sign
-                NBTItem nbtItem = new NBTItem(heldItem);
-                
-                // Clear any existing NBT data first
-                nbtItem.removeKey("copiedSignFront");
-                nbtItem.removeKey("copiedSignBack");
-                nbtItem.removeKey("copiedSignFrontColor");
-                nbtItem.removeKey("copiedSignBackColor");
-                nbtItem.removeKey("signGlowing");
-                nbtItem.removeKey("frontGlowing");
-                nbtItem.removeKey("backGlowing");
-                nbtItem.removeKey("signType");
-                
-                nbtItem.setString("copiedSignFront", String.join("\n", signData.getFront()));
-                nbtItem.setString("copiedSignBack", String.join("\n", signData.getBack()));
-                nbtItem.setString("copiedSignFrontColor", signData.getFrontColor());
-                nbtItem.setString("copiedSignBackColor", signData.getBackColor());
-                
-                // Store per-side glow states
-                nbtItem.setBoolean("frontGlowing", signData.isFrontGlowing());
-                nbtItem.setBoolean("backGlowing", signData.isBackGlowing());
-                nbtItem.setBoolean("signGlowing", signData.isGlowing()); // Legacy compatibility
-                
-                nbtItem.setString("signType", signData.getSignType());
-                
-                // Update item with premium lore
-                ItemStack updatedItem = nbtItem.getItem();
-                ItemMeta updatedMeta = updatedItem.getItemMeta();
+                // Apply sign data to held sign via PDC (replacing any existing payload).
+                SignItemData itemData = new SignItemData(
+                    String.join("\n", signData.getFront()),
+                    String.join("\n", signData.getBack()),
+                    signData.getFrontColor(),
+                    signData.getBackColor(),
+                    signData.isFrontGlowing(),
+                    signData.isBackGlowing(),
+                    signData.getSignType());
+
+                // Write data + premium lore onto the same meta.
+                ItemMeta updatedMeta = heldItem.getItemMeta();
                 if (updatedMeta != null) {
+                    SignItemStorage.clear(updatedMeta);
+                    SignItemStorage.write(updatedMeta, itemData);
+
                     List<String> newLore = SignLoreBuilder.buildPremiumSignLore(
                         signName,
                         signData.getFront(),
@@ -174,12 +162,12 @@ public class SignLibraryGUIListener implements Listener {
                         signData.getSignType(),
                         "Library"
                     );
-                    
+
                     updatedMeta.setLore(newLore);
-                    updatedItem.setItemMeta(updatedMeta);
+                    heldItem.setItemMeta(updatedMeta);
                 }
-                
-                player.getInventory().setItemInMainHand(updatedItem);
+
+                player.getInventory().setItemInMainHand(heldItem);
                 player.closeInventory();
                 player.sendMessage(Lang.SIGN_LOADED_TO_HELD.formatWithPrefix("%name%", signName));
                 

@@ -25,7 +25,13 @@ import java.util.logging.Logger;
  */
 public class ErrorHandler {
     
-    private static final Logger logger = CopySign.getInstance().getLogger();
+    // Resolve the plugin logger defensively: at runtime CopySign.getInstance() is
+    // non-null, but during unit tests (no Bukkit server) it is null. Falling back to a
+    // standalone logger avoids an NPE at class-initialization time and keeps the pure
+    // validation helpers (isValidSignContent, isValidFileName) unit-testable.
+    private static final Logger logger = CopySign.getInstance() != null
+            ? CopySign.getInstance().getLogger()
+            : Logger.getLogger("CopySign");
     private static final String BACKUP_SUFFIX = ".backup";
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
     

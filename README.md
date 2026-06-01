@@ -47,20 +47,28 @@ A powerful Minecraft Spigot plugin that allows players to copy and paste sign te
 - **Minecraft**: 1.21.7+ (tested with 1.21.7)
 - **Server Software**: Spigot, Paper, or compatible forks
 - **Java**: 21+ (compiled with Java 21)
-- **Dependencies**: 
-  - [NBT-API v2.15.1+](https://www.spigotmc.org/resources/nbt-api.7939/) (Required)
+- **Dependencies**: **None required.** CopySign now uses the native Bukkit
+  PersistentDataContainer for item storage — no NBT-API install needed.
   - [WorldGuard](https://enginehub.org/worldguard) (Optional - for region protection)
+  - [NBT-API](https://www.spigotmc.org/resources/nbt-api.7939/) (Optional - only used to
+    auto-migrate signs copied with CopySign 2.3.0 or older; see the upgrade note below)
+
+> **Upgrading from 2.3.0 or earlier?** Item storage moved from NBT-API to the native
+> PersistentDataContainer. Saved libraries and server templates are unaffected (they are
+> stored in YAML). Signs you had already *copied onto items* will be migrated
+> automatically the first time you place them or open the container holding them — as
+> long as the NBT-API plugin is still installed during that first launch. Once migrated,
+> NBT-API can be safely removed.
 
 ## 🚀 Installation
 
-### Step 1: Install Dependencies
-1. Download [NBT-API plugin](https://www.spigotmc.org/resources/nbt-api.7939/) (v2.15.1 or newer)
-2. Place `NBTAPI-X.X.X.jar` in your server's `plugins/` folder
-3. (Optional) Download [WorldGuard](https://enginehub.org/worldguard) for region protection
-4. Restart your server to load dependencies
+### Step 1: (Optional) Install Optional Plugins
+1. (Optional) Download [WorldGuard](https://enginehub.org/worldguard) for region protection
+2. (Optional, upgraders only) Keep [NBT-API](https://www.spigotmc.org/resources/nbt-api.7939/)
+   installed for one launch so legacy copied items migrate automatically
 
 ### Step 2: Install CopySign
-1. Download the latest `CopySign-2.3.0.jar`
+1. Download the latest `CopySign` jar
 2. Place the jar file in your server's `plugins/` folder
 3. Restart your server
 
@@ -348,9 +356,10 @@ Server templates are administrator-managed sign templates available to all playe
 ### Common Issues
 
 #### "Plugin not working"
-- ✅ Verify NBT-API is installed and loaded
 - ✅ Check server console for error messages
 - ✅ Ensure Java 21+ is being used
+- ✅ (Upgraders only) If old copied items show no data, ensure NBT-API was present on
+  first launch so they could migrate — or simply re-copy the sign
 - ✅ Confirm Minecraft version compatibility (1.21+)
 
 #### "No permission" errors

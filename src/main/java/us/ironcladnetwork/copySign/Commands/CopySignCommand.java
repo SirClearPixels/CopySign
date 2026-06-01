@@ -1,6 +1,7 @@
 package us.ironcladnetwork.copySign.Commands;
 
-import de.tr7zw.nbtapi.NBTItem;
+import us.ironcladnetwork.copySign.Util.SignItemData;
+import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.command.Command;
@@ -96,22 +97,17 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 if (heldItem == null || heldItem.getType() == Material.AIR) {
                     player.sendMessage(Lang.CLEAR_NO_ITEM.getWithPrefix());
                 } else {
-                    // Clear NBT data from the held item.
-                    NBTItem nbtItem = new NBTItem(heldItem);
-                    nbtItem.removeKey("copiedSignFront");
-                    nbtItem.removeKey("copiedSignBack");
-                    nbtItem.removeKey("copiedSignFrontColor");
-                    nbtItem.removeKey("copiedSignBackColor");
-                    nbtItem.removeKey("signGlowing");
-                    nbtItem.removeKey("signType");
-                    ItemStack updatedItem = nbtItem.getItem();
-                    // Clear lore and display name to restore default Minecraft item name.
-                    ItemMeta meta = updatedItem.getItemMeta();
+                    // Clear copied-sign data from the held item (PDC), then strip any
+                    // legacy NBT-API tags so older copied items are fully wiped too.
+                    ItemMeta meta = heldItem.getItemMeta();
                     if (meta != null) {
+                        SignItemStorage.clear(meta);
+                        // Clear lore and display name to restore default Minecraft item name.
                         meta.setLore(null);
                         meta.setDisplayName(null);
-                        updatedItem.setItemMeta(meta);
+                        heldItem.setItemMeta(meta);
                     }
+                    ItemStack updatedItem = SignItemStorage.stripLegacy(heldItem);
                     // Update player's held item.
                     player.getInventory().setItemInMainHand(updatedItem);
                     player.sendMessage(Lang.CLEAR_SUCCESS.getWithPrefix());
@@ -163,8 +159,7 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_SAVE.getWithPrefix());
                     return true;
                 }
-                NBTItem nbtItemForSave = new NBTItem(heldItemForSave);
-                if (!nbtItemForSave.hasTag("copiedSignFront") || !nbtItemForSave.hasTag("copiedSignBack")) {
+                if (!SignItemStorage.has(heldItemForSave)) {
                     player.sendMessage(Lang.SIGN_NO_DATA.getWithPrefix());
                     return true;
                 }
@@ -290,8 +285,7 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                         "%target%", savedHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
                     return true;
                 }
-                NBTItem nbtItemForLoad = new NBTItem(heldItemForLoad);
-                // Validate sign data before storing in NBT
+                // Validate sign data before storing
                 if (!NBTValidationUtil.validateSignData(savedData.getFront(), savedData.getBack())) {
                     player.sendMessage(Lang.SIGN_DATA_SIZE_EXCEEDED.getWithPrefix());
                     return true;
@@ -304,17 +298,17 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     player.sendMessage(Lang.SIGN_DATA_TEXT_TOO_LARGE.getWithPrefix());
                     return true;
                 }
-                nbtItemForLoad.setString("copiedSignFront", frontText);
-                nbtItemForLoad.setString("copiedSignBack", backText);
-                nbtItemForLoad.setString("copiedSignFrontColor", savedData.getFrontColor());
-                nbtItemForLoad.setString("copiedSignBackColor", savedData.getBackColor());
-                nbtItemForLoad.setBoolean("signGlowing", savedData.isGlowing());
-                nbtItemForLoad.setString("signType", savedData.getSignType());
+                SignItemData loadData = new SignItemData(
+                    frontText, backText,
+                    savedData.getFrontColor(), savedData.getBackColor(),
+                    savedData.isFrontGlowing(), savedData.isBackGlowing(),
+                    savedData.getSignType());
 
-                // Update lore for visual display.
-                ItemStack updatedHeldItem = nbtItemForLoad.getItem();
+                // Write data + lore for visual display onto the same meta.
+                ItemStack updatedHeldItem = heldItemForLoad;
                 ItemMeta meta = updatedHeldItem.getItemMeta();
                 if (meta != null) {
+                    SignItemStorage.write(meta, loadData);
                     List<String> lore = SignLoreBuilder.buildSignLore(
                         savedData.getFront(), savedData.getBack(),
                         savedData.getFrontColor(), savedData.getBackColor(),
@@ -696,12 +690,11 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        NBTItem nbtItem = new NBTItem(heldItem);
-        if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack")) {
+        if (!SignItemStorage.has(heldItem)) {
             player.sendMessage(Lang.MUST_HOLD_SIGN_WITH_DATA.getWithPrefix());
             return;
         }
-        
+
         // Save template using the sign item directly
         boolean success = us.ironcladnetwork.copySign.CopySign.getServerTemplateManager().saveTemplate(player, templateName, heldItem);
         if (success) {
@@ -817,27 +810,22 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        // Apply template to held sign
-        NBTItem nbtItem = new NBTItem(heldItem);
+        // Apply template to held sign via PDC
         String frontText = String.join("\n", templateData.getFront());
         String backText = String.join("\n", templateData.getBack());
-        
-        nbtItem.setString("copiedSignFront", frontText);
-        nbtItem.setString("copiedSignBack", backText);
-        nbtItem.setString("copiedSignFrontColor", templateData.getFrontColor());
-        nbtItem.setString("copiedSignBackColor", templateData.getBackColor());
-        // Handle deprecated isGlowing method - check both front and back glow states
         boolean frontGlowing = templateData.isFrontGlowing();
         boolean backGlowing = templateData.isBackGlowing();
-        nbtItem.setBoolean("signGlowing", frontGlowing || backGlowing);
-        nbtItem.setBoolean("frontGlowing", frontGlowing);
-        nbtItem.setBoolean("backGlowing", backGlowing);
-        nbtItem.setString("signType", templateData.getSignType());
-        
-        // Update item with lore
-        ItemStack updatedItem = nbtItem.getItem();
+
+        SignItemData templateItemData = new SignItemData(
+            frontText, backText,
+            templateData.getFrontColor(), templateData.getBackColor(),
+            frontGlowing, backGlowing, templateData.getSignType());
+
+        // Write data + lore onto the same meta.
+        ItemStack updatedItem = heldItem;
         ItemMeta meta = updatedItem.getItemMeta();
         if (meta != null) {
+            SignItemStorage.write(meta, templateItemData);
             List<String> lore = SignLoreBuilder.buildPremiumSignLore(
                 null, // item name
                 templateData.getFront(), templateData.getBack(),
@@ -848,7 +836,7 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
             meta.setLore(lore);
             updatedItem.setItemMeta(meta);
         }
-        
+
         player.getInventory().setItemInMainHand(updatedItem);
         player.sendMessage(Lang.TEMPLATE_LOADED.formatWithPrefix("%name%", templateName));
         

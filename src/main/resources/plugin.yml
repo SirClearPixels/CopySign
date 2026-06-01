@@ -4,10 +4,9 @@ main: us.ironcladnetwork.copySign.CopySign
 api-version: '1.21'
 folia-supported: true
 authors: [ ClearPixels ]
-description: Copy and paste sign text via NBT data
+description: Copy and paste sign text, color, and glow between signs
 website: IroncladNetwork.us
-depend: [ NBTAPI ]
-softdepend: [ WorldGuard ]
+softdepend: [ WorldGuard, NBTAPI ]
 permissions:
   # Base permissions
   copysign.use:

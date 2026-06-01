@@ -1,6 +1,5 @@
 package us.ironcladnetwork.copySign.Util;
 
-import de.tr7zw.nbtapi.NBTItem;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -135,20 +134,22 @@ public class ServerTemplateManager {
             return false;
         }
         
-        NBTItem nbtItem = new NBTItem(signItem);
-        // Ensure required NBT tags are present.
-        if (!nbtItem.hasTag("copiedSignFront") || !nbtItem.hasTag("copiedSignBack")) {
+        // Read the copied-sign payload (PDC, with legacy NBT-API fallback).
+        java.util.Optional<SignItemData> copiedOpt = SignItemStorage.read(signItem);
+        if (copiedOpt.isEmpty()) {
             player.sendMessage(Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
             return false;
         }
-        
-        // Extract sign information from NBT.
-        String copiedSignFront = nbtItem.getString("copiedSignFront");
-        String copiedSignBack = nbtItem.getString("copiedSignBack");
-        String copiedFrontColor = nbtItem.hasTag("copiedSignFrontColor") ? nbtItem.getString("copiedSignFrontColor") : "BLACK";
-        String copiedBackColor = nbtItem.hasTag("copiedSignBackColor") ? nbtItem.getString("copiedSignBackColor") : "BLACK";
-        boolean signGlowing = nbtItem.hasTag("signGlowing") && nbtItem.getBoolean("signGlowing");
-        String signType = nbtItem.hasTag("signType") ? nbtItem.getString("signType") : "regular";
+        SignItemData copied = copiedOpt.get();
+
+        // Extract sign information from the copied payload.
+        String copiedSignFront = copied.getFront();
+        String copiedSignBack = copied.getBack();
+        String copiedFrontColor = copied.hasFrontColor() ? copied.getFrontColor() : "BLACK";
+        String copiedBackColor = copied.hasBackColor() ? copied.getBackColor() : "BLACK";
+        boolean frontGlowing = copied.isFrontGlowing();
+        boolean backGlowing = copied.isBackGlowing();
+        String signType = copied.getSignType();
 
         // Get lore from the item meta if present.
         java.util.List<String> lore = null;
@@ -163,8 +164,8 @@ public class ServerTemplateManager {
         String[] frontLines = copiedSignFront.split("\n", -1);
         String[] backLines = copiedSignBack.split("\n", -1);
 
-        // Create a SavedSignData instance using the extracted data.
-        SavedSignData savedData = new SavedSignData(frontLines, backLines, signGlowing, copiedFrontColor, copiedBackColor, signType, lore);
+        // Create a SavedSignData instance using the extracted data (per-side glow preserved).
+        SavedSignData savedData = new SavedSignData(frontLines, backLines, frontGlowing, backGlowing, copiedFrontColor, copiedBackColor, signType, lore);
 
         // Save the data under the template name.
         ConfigurationSection templatesSection = templateConfig.getConfigurationSection("templates");
