@@ -34,7 +34,18 @@ public final class SignItemStorage {
     private static NamespacedKey keyFrontGlow;
     private static NamespacedKey keyBackGlow;
     private static NamespacedKey keyType;
+    private static NamespacedKey keyVersion;
     private static volatile boolean initialized = false;
+
+    /**
+     * The current on-item copy-data format version stamped into the PDC payload on every
+     * {@link #write(ItemMeta, SignItemData)}. Items missing the marker are treated as
+     * version 1 (see {@link #readVersion(PersistentDataContainer)}); items carrying a newer
+     * version are never downgraded (see the {@code Math.max} stamp in {@code write}).
+     *
+     * @since 2.4.0
+     */
+    public static final int CURRENT_FORMAT_VERSION = 1;
 
     private SignItemStorage() {
     }
@@ -53,6 +64,7 @@ public final class SignItemStorage {
         keyFrontGlow = new NamespacedKey(plugin, "front_glowing");
         keyBackGlow = new NamespacedKey(plugin, "back_glowing");
         keyType = new NamespacedKey(plugin, "sign_type");
+        keyVersion = new NamespacedKey(plugin, "format_version");
         initialized = true;
     }
 
@@ -115,6 +127,10 @@ public final class SignItemStorage {
             return;
         }
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        // Read any existing format marker BEFORE overwriting known keys so the
+        // never-downgrade stamp below can compare against the item's prior version.
+        int existingVersion = readVersion(pdc);
+
         pdc.set(keyFront, PersistentDataType.STRING, data.getFront());
         pdc.set(keyBack, PersistentDataType.STRING, data.getBack());
 
@@ -124,6 +140,10 @@ public final class SignItemStorage {
         pdc.set(keyFrontGlow, PersistentDataType.BYTE, (byte) (data.isFrontGlowing() ? 1 : 0));
         pdc.set(keyBackGlow, PersistentDataType.BYTE, (byte) (data.isBackGlowing() ? 1 : 0));
         pdc.set(keyType, PersistentDataType.STRING, data.getSignType());
+
+        // Stamp the format marker, never downgrading an item carrying a newer version.
+        pdc.set(keyVersion, PersistentDataType.INTEGER,
+                Math.max(existingVersion, CURRENT_FORMAT_VERSION));
     }
 
     /**
@@ -163,6 +183,7 @@ public final class SignItemStorage {
         pdc.remove(keyFrontGlow);
         pdc.remove(keyBackGlow);
         pdc.remove(keyType);
+        pdc.remove(keyVersion);
     }
 
     /**
@@ -249,6 +270,15 @@ public final class SignItemStorage {
         boolean backGlow = pdc.getOrDefault(keyBackGlow, PersistentDataType.BYTE, (byte) 0) != 0;
         String type = pdc.getOrDefault(keyType, PersistentDataType.STRING, "regular");
         return new SignItemData(front, back, frontColor, backColor, frontGlow, backGlow, type);
+    }
+
+    /**
+     * Reads the on-item format-version marker. A missing (or wrong-type) marker defaults to
+     * {@code 1}, so items written before the marker existed are treated as version 1 and
+     * upgraded silently on their next {@link #write(ItemMeta, SignItemData)}.
+     */
+    private static int readVersion(PersistentDataContainer pdc) {
+        return pdc.getOrDefault(keyVersion, PersistentDataType.INTEGER, 1);
     }
 
     private static void setOrRemoveString(PersistentDataContainer pdc, NamespacedKey key, String value) {

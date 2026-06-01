@@ -148,7 +148,6 @@ public class SignLibraryGUIListener implements Listener {
                 // Write data + premium lore onto the same meta.
                 ItemMeta updatedMeta = heldItem.getItemMeta();
                 if (updatedMeta != null) {
-                    SignItemStorage.clear(updatedMeta);
                     SignItemStorage.write(updatedMeta, itemData);
 
                     List<String> newLore = SignLoreBuilder.buildPremiumSignLore(
