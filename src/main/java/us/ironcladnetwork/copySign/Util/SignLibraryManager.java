@@ -480,7 +480,7 @@ public class SignLibraryManager {
      * This is a pure, static, side-effect-free helper: no lock, sound, metrics, Lang, or
      * scheduler interaction. It operates only on the supplied {@link ConfigurationSection},
      * which makes it unit-testable against a plain {@code YamlConfiguration} section without
-     * constructing the manager. It never reads or writes any {@code format_version} key —
+     * constructing the manager. It never reads or writes any version-marker key —
      * Phase 4 versioned only the on-item PDC payload, not the library/template YAML (D-09).
      *
      * @param ownerSection The owner's section (e.g. {@code players.<uuid>}); may be null.
