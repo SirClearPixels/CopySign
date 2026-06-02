@@ -168,6 +168,55 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 us.ironcladnetwork.copySign.CopySign.getCooldownManager().recordCommandUse(player, "save");
                 break;
             }
+            case "rename": {
+                // Command-only library rename (D-01): /copysign rename <old> <new>
+                // Reuse copysign.save permission (Claude's Discretion, D-01) — no new node.
+                if (!Permissions.canSaveToLibrary(player)) {
+                    player.sendMessage(Lang.NO_PERMISSION_LIBRARY.getWithPrefix());
+                    return true;
+                }
+                // Check if the sign-library feature is enabled in config
+                if (!us.ironcladnetwork.copySign.CopySign.getInstance().getConfigManager().isSignLibraryEnabled()) {
+                    player.sendMessage(Lang.COMMAND_FEATURE_DISABLED.formatWithPrefix("%feature%", "Sign library"));
+                    return true;
+                }
+                // Check cooldown (D-03)
+                if (!us.ironcladnetwork.copySign.CopySign.getCooldownManager().canUseCommand(player, "rename")) {
+                    us.ironcladnetwork.copySign.CopySign.getCooldownManager().sendCooldownMessage(player, "rename");
+                    return true;
+                }
+                // Usage: /copysign rename <old> <new>
+                if (args.length < 3) {
+                    player.sendMessage(Lang.COPYSIGN_USAGE.getWithPrefix());
+                    return true;
+                }
+                String oldName = args[1];
+                String newName = args[2];
+                // Command-layer validation gate for BOTH names (D-04, LIB-04)
+                if (!SignValidationUtil.isValidSignName(oldName) || !SignValidationUtil.isValidSignName(newName)) {
+                    player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
+                    return true;
+                }
+                // Same-name short-circuit (case-SENSITIVE — "Foo"->"foo" is a legitimate rename, D-05).
+                if (oldName.equals(newName)) {
+                    player.sendMessage(Lang.SIGN_RENAME_TARGET_EXISTS.getWithPrefix());
+                    return true;
+                }
+                // Source must exist
+                if (signLibraryManager.getSign(player, oldName) == null) {
+                    player.sendMessage(Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
+                    return true;
+                }
+                // Target collision is a hard reject — never overwrite (D-05)
+                if (signLibraryManager.getSign(player, newName) != null) {
+                    player.sendMessage(Lang.SIGN_RENAME_TARGET_EXISTS.getWithPrefix());
+                    return true;
+                }
+                // Instant rename, no confirmation (D-02). Success message is sent by renameSign's async callback.
+                signLibraryManager.renameSign(player, oldName, newName);
+                us.ironcladnetwork.copySign.CopySign.getCooldownManager().recordCommandUse(player, "rename");
+                break;
+            }
             case "library": {
                 // Check library permission for library commands
                 if (!Permissions.canViewLibrary(player)) {
@@ -378,6 +427,9 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                         break;
                     case "delete":
                         handleTemplateDelete(player, args);
+                        break;
+                    case "rename":
+                        handleTemplateRename(player, args);
                         break;
                     case "use":
                     case "load":
@@ -767,6 +819,42 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         }
     }
     
+    /**
+     * Handle admin template rename command (D-01, LIB-02): /copysign templates rename &lt;old&gt; &lt;new&gt;.
+     * Admin-gated, instant (no confirmation, D-02), command-layer validated, collision-rejecting.
+     */
+    private void handleTemplateRename(Player player, String[] args) {
+        // Admin gate — templates rename stays admin-only (LIB-02)
+        if (!Permissions.canDeleteTemplates(player)) {
+            player.sendMessage(Lang.TEMPLATE_NO_PERMISSION_DELETE.getWithPrefix());
+            return;
+        }
+        // Usage: /copysign templates rename <old> <new>
+        if (args.length < 4) {
+            player.sendMessage(Lang.TEMPLATE_USAGE_DELETE.getWithPrefix());
+            return;
+        }
+        String oldName = args[2];
+        String newName = args[3];
+        // Command-layer validation gate for BOTH names (D-04, LIB-04)
+        if (!SignValidationUtil.isValidSignName(oldName) || !SignValidationUtil.isValidSignName(newName)) {
+            player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
+            return;
+        }
+        // Source must exist
+        if (us.ironcladnetwork.copySign.CopySign.getServerTemplateManager().getTemplate(oldName) == null) {
+            player.sendMessage(Lang.TEMPLATE_NOT_FOUND.formatWithPrefix("%name%", oldName));
+            return;
+        }
+        // Target collision is a hard reject — never overwrite (D-05)
+        if (us.ironcladnetwork.copySign.CopySign.getServerTemplateManager().getTemplate(newName) != null) {
+            player.sendMessage(Lang.TEMPLATE_RENAME_TARGET_EXISTS.getWithPrefix());
+            return;
+        }
+        // Instant rename, no confirmation (D-02). renameTemplate sends its own success message.
+        us.ironcladnetwork.copySign.CopySign.getServerTemplateManager().renameTemplate(player, oldName, newName);
+    }
+
     /**
      * Handle template use/load command
      */
