@@ -234,7 +234,24 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 Map<String, SavedSignData> savedSigns = signLibraryManager.getAllSigns(player);
-                if (savedSigns.isEmpty()) {
+                if (args.length >= 2) {
+                    // Search path (D-06): /copysign library <query> opens a case-insensitively
+                    // filtered GUI. Skip the isEmpty() short-circuit so the shell always opens (D-08).
+                    String query = args[1];
+                    List<String> matchingNames = SignLibraryManager.filterByName(savedSigns.keySet(), query);
+                    List<Map.Entry<String, SavedSignData>> filteredEntries = new ArrayList<>();
+                    for (Map.Entry<String, SavedSignData> entry : savedSigns.entrySet()) {
+                        if (matchingNames.contains(entry.getKey())) {
+                            filteredEntries.add(entry);
+                        }
+                    }
+                    SignLibraryGUI.openPage(player, filteredEntries, 0);
+                    if (filteredEntries.isEmpty()) {
+                        // No-match chat notice naming the query (D-08)
+                        player.sendMessage(Lang.LIBRARY_SEARCH_NO_MATCH.formatWithPrefix("%query%", query));
+                    }
+                    us.ironcladnetwork.copySign.CopySign.getCooldownManager().recordCommandUse(player, "library");
+                } else if (savedSigns.isEmpty()) {
                     player.sendMessage(Lang.SIGN_LIBRARY_EMPTY.getWithPrefix());
                 } else {
                     SignLibraryGUI.open(player, savedSigns);
@@ -490,9 +507,13 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
             us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.library", true)) {
             options.add("library");
         }
-        if (Permissions.canDeleteFromLibrary(player) && 
+        if (Permissions.canDeleteFromLibrary(player) &&
             us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.delete", true)) {
             options.add("delete");
+        }
+        if (Permissions.canSaveToLibrary(player) &&
+            us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.rename", true)) {
+            options.add("rename");
         }
         if (Permissions.canLoadFromLibrary(player) && 
             us.ironcladnetwork.copySign.CopySign.getInstance().getConfigBoolean("commands.enabled.load", true)) {
@@ -523,8 +544,10 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         // For subcommands that require a sign name, auto-complete for "delete" and "load" only.
         if (args.length == 2) {
             String subCommand = args[0].toLowerCase(Locale.ENGLISH);
-            if ((subCommand.equals("delete") && Permissions.canDeleteFromLibrary(player)) || 
-                (subCommand.equals("load") && Permissions.canLoadFromLibrary(player))) {
+            if ((subCommand.equals("delete") && Permissions.canDeleteFromLibrary(player)) ||
+                (subCommand.equals("load") && Permissions.canLoadFromLibrary(player)) ||
+                (subCommand.equals("rename") && Permissions.canSaveToLibrary(player)) ||
+                (subCommand.equals("library") && Permissions.canViewLibrary(player))) {
                 Map<String, SavedSignData> savedSigns = signLibraryManager.getAllSigns(player);
                 List<String> names = new ArrayList<>(savedSigns.keySet());
                 String current = args[1].toLowerCase(Locale.ENGLISH);
@@ -546,6 +569,7 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                 }
                 if (Permissions.canDeleteTemplates(player)) {
                     templateSubCommands.add("delete");
+                    templateSubCommands.add("rename");
                 }
                 if (Permissions.canUseTemplates(player)) {
                     templateSubCommands.add("use");
@@ -563,7 +587,8 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         // For template subcommands that require a template name
         if (args.length == 3 && args[0].toLowerCase(Locale.ENGLISH).equals("templates")) {
             String templateSubCommand = args[1].toLowerCase(Locale.ENGLISH);
-            if ((templateSubCommand.equals("delete") && Permissions.canDeleteTemplates(player)) || 
+            if ((templateSubCommand.equals("delete") && Permissions.canDeleteTemplates(player)) ||
+                (templateSubCommand.equals("rename") && Permissions.canDeleteTemplates(player)) ||
                 (templateSubCommand.equals("use") && Permissions.canUseTemplates(player)) ||
                 (templateSubCommand.equals("load") && Permissions.canUseTemplates(player))) {
                 Map<String, SavedSignData> templates = us.ironcladnetwork.copySign.CopySign.getServerTemplateManager().getAllTemplates();
