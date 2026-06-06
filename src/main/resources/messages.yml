@@ -153,6 +153,7 @@ messages:
   # Template Usage
   TEMPLATE_USAGE_CREATE: "&cUsage: /copysign templates create <name>"
   TEMPLATE_USAGE_DELETE: "&cUsage: /copysign templates delete <name> [-force]"
+  TEMPLATE_USAGE_RENAME: "&cUsage: /copysign templates rename <old> <new>"
   TEMPLATE_USAGE_USE: "&cUsage: /copysign templates use <name>"
   
   # Template Confirmation

@@ -861,7 +861,7 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
         }
         // Usage: /copysign templates rename <old> <new>
         if (args.length < 4) {
-            player.sendMessage(Lang.TEMPLATE_USAGE_DELETE.getWithPrefix());
+            player.sendMessage(Lang.TEMPLATE_USAGE_RENAME.getWithPrefix());
             return;
         }
         String oldName = args[2];
