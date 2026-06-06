@@ -17,8 +17,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
@@ -40,6 +43,17 @@ public class SignLibraryManager {
     
     // Lock for thread-safe access to signLibraryConfig
     private final ReentrantLock configLock = new ReentrantLock();
+
+    /**
+     * Per-player active library search query (LIB-03, SC-4, D-07).
+     * <p>
+     * Keyed by player UUID; populated when {@code /copysign library <query>} runs so the same
+     * filter can be re-applied on every page of the library GUI (page 2+ included). The map is
+     * cleared on a bare {@code /copysign library} open and on player quit to bound memory, so it
+     * holds at most one String per online player. {@link ConcurrentHashMap} mirrors
+     * {@code ConfirmationManager} for Folia safety. Purely in-memory: never serialized to disk.
+     */
+    private final Map<UUID, String> activeSearchFilters = new ConcurrentHashMap<>();
 
     /**
      * Initializes the manager by loading the savedSigns.yml file.
@@ -580,6 +594,76 @@ public class SignLibraryManager {
         for (String name : names) {
             if (name != null && name.toLowerCase(Locale.ENGLISH).contains(needle)) {
                 result.add(name);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Stores the active library search query for a player (LIB-03, SC-4, D-07).
+     * <p>
+     * The query is stored verbatim — {@link #filterEntries(Map, String)} (via
+     * {@link #filterByName(Collection, String)}) lowercases at match time, so no normalization
+     * is applied here. The map is cleared on a bare library open and on player quit to bound
+     * memory; a new search simply overwrites the prior entry.
+     *
+     * @param playerId The player's UUID.
+     * @param query    The search query to persist.
+     */
+    public void setActiveFilter(UUID playerId, String query) {
+        activeSearchFilters.put(playerId, query);
+    }
+
+    /**
+     * Returns the active library search query for a player, or {@code null} if none is set
+     * (LIB-03, SC-4). A null result means "no active filter" — {@link #filterEntries(Map, String)}
+     * treats it as "return all entries".
+     *
+     * @param playerId The player's UUID.
+     * @return The stored query, or {@code null} if no filter is active.
+     */
+    public String getActiveFilter(UUID playerId) {
+        return activeSearchFilters.get(playerId);
+    }
+
+    /**
+     * Clears the active library search query for a player (LIB-03, SC-4). Called on a bare
+     * {@code /copysign library} open and on player quit to keep the UUID-keyed map bounded.
+     *
+     * @param playerId The player's UUID.
+     */
+    public void clearActiveFilter(UUID playerId) {
+        activeSearchFilters.remove(playerId);
+    }
+
+    /**
+     * Pure entry-assembly seam used by BOTH the command's first page and the listener's page 2+
+     * navigation, so filtered rendering is identical across pages (LIB-03, SC-4).
+     * <p>
+     * Returns the subset of {@code entries} whose KEY matches {@code query} via the same
+     * case-insensitive substring rule as {@link #filterByName(Collection, String)}. A null or
+     * blank query returns ALL entries (matching filterByName's contract); a null {@code entries}
+     * returns an empty list. The result is built by iterating {@code entries.entrySet()} in
+     * encounter order and keeping matching keys, so the order is preserved — pagination
+     * consistency depends on both callers yielding the SAME entry order over the same keys.
+     *
+     * @param entries The player's saved-sign entries (name → data); may be null.
+     * @param query   The case-insensitive substring to match against entry keys.
+     * @return The matching entries in encounter order; all entries for a null/blank query;
+     *         an empty list for a null {@code entries}.
+     */
+    public static List<Map.Entry<String, SavedSignData>> filterEntries(
+            Map<String, SavedSignData> entries, String query) {
+        List<Map.Entry<String, SavedSignData>> result = new ArrayList<>();
+        if (entries == null) {
+            return result;
+        }
+        // Reuse filterByName for the matching rule, then build a Set for O(1) membership checks
+        // while preserving encounter order via the entrySet iteration below.
+        Set<String> matching = new HashSet<>(filterByName(entries.keySet(), query));
+        for (Map.Entry<String, SavedSignData> entry : entries.entrySet()) {
+            if (matching.contains(entry.getKey())) {
+                result.add(entry);
             }
         }
         return result;

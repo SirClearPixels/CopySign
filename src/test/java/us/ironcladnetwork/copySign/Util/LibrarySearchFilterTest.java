@@ -2,9 +2,12 @@ package us.ironcladnetwork.copySign.Util;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -73,5 +76,55 @@ class LibrarySearchFilterTest {
         List<String> result =
                 SignLibraryManager.filterByName(Collections.emptyList(), "anything");
         assertTrue(result.isEmpty());
+    }
+
+    // ---- filterEntries seam (LIB-03, SC-4): the order-preserving entry filter reused by both
+    // the command's first page and the listener's page 2+ navigation. No Bukkit dependency. ----
+
+    /** A minimal SavedSignData; the seam only filters by KEY, so the value content is irrelevant. */
+    private static SavedSignData stub() {
+        return new SavedSignData(
+                new String[]{"a", "b", "c", "d"},
+                new String[]{"e", "f", "g", "h"},
+                false, false, "OAK", "OAK", "regular", null);
+    }
+
+    /** An insertion-ordered map of the same names used above, each mapped to a stub value. */
+    private Map<String, SavedSignData> entriesMap() {
+        Map<String, SavedSignData> map = new LinkedHashMap<>();
+        for (String name : names) {
+            map.put(name, stub());
+        }
+        return map;
+    }
+
+    @Test
+    void filterEntriesReturnsOnlyMatchingEntriesInOrder() {
+        // "ab" matches "abandoned" and "ABBA"; result preserves insertion order.
+        List<Map.Entry<String, SavedSignData>> result =
+                SignLibraryManager.filterEntries(entriesMap(), "ab");
+        List<String> keys = new ArrayList<>();
+        for (Map.Entry<String, SavedSignData> e : result) {
+            keys.add(e.getKey());
+        }
+        assertEquals(List.of("abandoned", "ABBA"), keys);
+    }
+
+    @Test
+    void filterEntriesNullOrBlankQueryReturnsAllEntries() {
+        assertEquals(names.size(), SignLibraryManager.filterEntries(entriesMap(), null).size());
+        assertEquals(names.size(), SignLibraryManager.filterEntries(entriesMap(), "   ").size());
+    }
+
+    @Test
+    void filterEntriesNoMatchReturnsEmptyList() {
+        List<Map.Entry<String, SavedSignData>> result =
+                SignLibraryManager.filterEntries(entriesMap(), "zzz");
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void filterEntriesNullMapReturnsEmptyList() {
+        assertTrue(SignLibraryManager.filterEntries(null, "anything").isEmpty());
     }
 }
