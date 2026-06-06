@@ -9,6 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import us.ironcladnetwork.copySign.Lang.Lang;
@@ -18,7 +19,6 @@ import us.ironcladnetwork.copySign.Util.SavedSignData;
 import us.ironcladnetwork.copySign.Util.DesignConstants;
 import us.ironcladnetwork.copySign.Util.SignLoreBuilder;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -204,8 +204,25 @@ public class SignLibraryGUIListener implements Listener {
      */
     private void openPageForPlayer(Player player, int newPageOneIndexed) {
         int newPageIndex = newPageOneIndexed - 1; // Convert to 0-indexed.
+        // Re-apply the persisted search filter (if any) so page 2+ shows ONLY matching signs
+        // (LIB-03, SC-4). A null filter makes filterEntries return all entries, so the
+        // unfiltered page-nav case is unchanged. Same seam as the command's first page.
+        String activeFilter = signLibraryManager.getActiveFilter(player.getUniqueId());
         Map<String, SavedSignData> savedSigns = signLibraryManager.getAllSigns(player);
-        List<Entry<String, SavedSignData>> entries = new ArrayList<>(savedSigns.entrySet());
+        List<Entry<String, SavedSignData>> entries =
+                SignLibraryManager.filterEntries(savedSigns, activeFilter);
         SignLibraryGUI.openPage(player, entries, newPageIndex);
+    }
+
+    /**
+     * Clears the player's persisted library search filter on disconnect so the UUID-keyed map
+     * on {@link SignLibraryManager} cannot grow unbounded (LIB-03, SC-4). Mirrors the per-player
+     * cleanup convention in {@code PlayerQuitListener}.
+     *
+     * @param event The player-quit event.
+     */
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        signLibraryManager.clearActiveFilter(event.getPlayer().getUniqueId());
     }
 }

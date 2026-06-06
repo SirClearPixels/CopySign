@@ -238,25 +238,30 @@ public class CopySignCommand implements CommandExecutor, TabCompleter {
                     // Search path (D-06): /copysign library <query> opens a case-insensitively
                     // filtered GUI. Skip the isEmpty() short-circuit so the shell always opens (D-08).
                     String query = args[1];
-                    List<String> matchingNames = SignLibraryManager.filterByName(savedSigns.keySet(), query);
-                    List<Map.Entry<String, SavedSignData>> filteredEntries = new ArrayList<>();
-                    for (Map.Entry<String, SavedSignData> entry : savedSigns.entrySet()) {
-                        if (matchingNames.contains(entry.getKey())) {
-                            filteredEntries.add(entry);
-                        }
-                    }
+                    // Build the first page through the shared seam so page 1 and page 2+ filter
+                    // identically (LIB-03, SC-4).
+                    List<Map.Entry<String, SavedSignData>> filteredEntries =
+                            SignLibraryManager.filterEntries(savedSigns, query);
+                    // Persist the query so page navigation (openPageForPlayer) re-applies it (D-07).
+                    signLibraryManager.setActiveFilter(player.getUniqueId(), query);
                     SignLibraryGUI.openPage(player, filteredEntries, 0);
                     if (filteredEntries.isEmpty()) {
                         // No-match chat notice naming the query (D-08)
                         player.sendMessage(Lang.LIBRARY_SEARCH_NO_MATCH.formatWithPrefix("%query%", query));
                     }
                     us.ironcladnetwork.copySign.CopySign.getCooldownManager().recordCommandUse(player, "library");
-                } else if (savedSigns.isEmpty()) {
-                    player.sendMessage(Lang.SIGN_LIBRARY_EMPTY.getWithPrefix());
                 } else {
-                    SignLibraryGUI.open(player, savedSigns);
-                    // Record command usage
-                    us.ironcladnetwork.copySign.CopySign.getCooldownManager().recordCommandUse(player, "library");
+                    // Bare /copysign library is the ONLY unfiltered GUI entry point — clear any
+                    // prior filter here so a stale search never leaks into the unfiltered view
+                    // (covers both the empty-library and the open sub-branches).
+                    signLibraryManager.clearActiveFilter(player.getUniqueId());
+                    if (savedSigns.isEmpty()) {
+                        player.sendMessage(Lang.SIGN_LIBRARY_EMPTY.getWithPrefix());
+                    } else {
+                        SignLibraryGUI.open(player, savedSigns);
+                        // Record command usage
+                        us.ironcladnetwork.copySign.CopySign.getCooldownManager().recordCommandUse(player, "library");
+                    }
                 }
                 break;
             }
