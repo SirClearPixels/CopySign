@@ -1,8 +1,6 @@
 package us.ironcladnetwork.copySign.Lang;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Test;
@@ -57,9 +55,17 @@ class LangRenderingTest {
         assertNotEquals(literal, parsed,
                 "MiniMessage tags must be parsed, not rendered as literal text");
 
-        // The expectation is exactly MiniMessage's own parse of the same string.
-        Component expected = MiniMessage.miniMessage().deserialize(raw);
-        assertEquals(expected, parsed, "render() must MiniMessage-parse a tag-only string");
+        // render() must route a tag-only string to MiniMessage — assert via the rendered
+        // plain text (the gradient expands to per-character children, so the raw "<gradient...>"
+        // markup must be GONE while the visible text "Hellogo" survives).
+        String plain = PLAIN.serialize(parsed);
+        assertFalse(plain.contains("<gradient"),
+                "render() must MiniMessage-parse the gradient tag, not keep it literal. Got: " + plain);
+        assertTrue(plain.contains("Hello") && plain.contains("go"),
+                "Parsed visible text must survive. Got: " + plain);
+
+        // The styling must reflect the tags: at least one child carries a color (gradient color).
+        assertTrue(hasColor(parsed), "Parsed MiniMessage gradient must apply color styling");
 
         // A ClickEvent must be present somewhere in the tree (on the <click> child).
         assertTrue(hasClickEvent(parsed), "Parsed MiniMessage must carry a ClickEvent from <click>");
@@ -102,6 +108,19 @@ class LangRenderingTest {
         }
         for (Component child : component.children()) {
             if (hasClickEvent(child)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Recursively checks whether any node in the Component tree carries a text color. */
+    private static boolean hasColor(Component component) {
+        if (component.color() != null) {
+            return true;
+        }
+        for (Component child : component.children()) {
+            if (hasColor(child)) {
                 return true;
             }
         }

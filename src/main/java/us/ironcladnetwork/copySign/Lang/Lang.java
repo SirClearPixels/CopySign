@@ -1,6 +1,10 @@
 package us.ironcladnetwork.copySign.Lang;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import us.ironcladnetwork.copySign.CopySign;
@@ -159,8 +163,18 @@ public enum Lang {
     WORLDGUARD_COPY_DENIED("messages.WORLDGUARD_COPY_DENIED"),
     WORLDGUARD_PASTE_DENIED("messages.WORLDGUARD_PASTE_DENIED");
 
+    /** Shared MiniMessage instance — created once and reused (RESEARCH anti-pattern: never per-call). */
+    private static final MiniMessage MM = MiniMessage.miniMessage();
+    /** Legacy serializer for {@code &}-coded strings (handles hex {@code &#rrggbb} + all format codes). */
+    private static final LegacyComponentSerializer LEGACY_AMPERSAND = LegacyComponentSerializer.legacyAmpersand();
+    /** Legacy serializer for strings already containing {@code §} section codes. */
+    private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
+
     private final String path;
+    /** Raw (unparsed) string value loaded from messages.yml. Parsed to a Component at render time. */
     private String message;
+    /** Lazily-cached Component for placeholder-free keys; null until first {@link #get()}, cleared by {@link #reload()}. */
+    private Component cached;
     private static FileConfiguration config;
 
     Lang(String path) {
@@ -188,54 +202,130 @@ public enum Lang {
 
     /**
      * Reloads the message from the configuration.
+     * <p>
+     * Stores the RAW (unparsed) config string so that keys containing {@code %x%}
+     * placeholders can be parsed at {@link #format(Object...)} time with their
+     * {@link TagResolver}s applied (Open Question 2). Clears any cached Component.
      */
     public void reload() {
-        message = ChatColor.translateAlternateColorCodes('&', config.getString(path, path));
+        message = config.getString(path, path);
+        cached = null;
+    }
+
+    // ---- Rendering core (D-01): per-string legacy-vs-MiniMessage auto-detection. ----
+
+    /**
+     * Auto-detect predicate (D-01). A string is treated as legacy when it contains a
+     * {@code §} section character OR a {@code &} immediately followed by a color/format/hex
+     * code; otherwise it is treated as MiniMessage.
+     *
+     * @param s the raw string to classify
+     * @return {@code true} if the string should render via a legacy serializer
+     */
+    static boolean isLegacy(String s) {
+        if (s == null) return false;
+        return s.indexOf('§') >= 0                          // any § (section)
+                || s.matches("(?s).*&[0-9A-Fa-fK-Ok-oRrXx#].*");  // & followed by a color/format/hex code
     }
 
     /**
-     * Gets the formatted message.
+     * Renders a raw string to a {@link Component} via the auto-detect path (no placeholders).
+     * {@code §}-containing strings route to {@link LegacyComponentSerializer#legacySection()},
+     * {@code &}-only strings to {@link LegacyComponentSerializer#legacyAmpersand()}, and
+     * everything else to {@link MiniMessage#deserialize(String)}.
      *
-     * @return The formatted message with colors.
+     * @param raw the raw message string
+     * @return the rendered Component
      */
-    public String get() {
-        return message;
+    static Component render(String raw) {
+        if (raw == null) return Component.empty();
+        if (raw.indexOf('§') >= 0) {
+            return LEGACY_SECTION.deserialize(raw);
+        }
+        if (isLegacy(raw)) {
+            return LEGACY_AMPERSAND.deserialize(raw);
+        }
+        return MM.deserialize(raw);
     }
 
     /**
-     * Gets the formatted message with placeholders replaced.
+     * Formats an arbitrary raw template with {@code %x%} placeholder pairs, applying the
+     * injection-safe substitution rules (D-03/D-04). On the MiniMessage path each value is
+     * inserted via {@link Placeholder#unparsed(String, String)} so a value containing
+     * {@code <...>} renders as literal text and is never parsed as a tag. On the legacy path
+     * the value is plain-{@code String.replace}d (already literal) before deserialization.
      *
-     * @param args The placeholder replacements in pairs (placeholder, value).
-     * @return The formatted message with placeholders replaced.
+     * @param raw  the raw template string
+     * @param args placeholder/value pairs (e.g. {@code "%query%", userInput})
+     * @return the rendered Component with placeholders substituted
+     * @throws IllegalArgumentException if {@code args} is not in pairs
      */
-    public String format(Object... args) {
+    static Component formatRaw(String raw, Object... args) {
         if (args.length % 2 != 0)
             throw new IllegalArgumentException("Args must be in pairs of placeholder and value!");
+        if (raw == null) return Component.empty();
 
-        String formatted = message;
-        // Iterate through each placeholder pair
-        for (int i = 0; i < args.length; i += 2) {
-            formatted = formatted.replace(args[i].toString(), args[i + 1].toString());
+        if (isLegacy(raw)) {
+            // Legacy path: plain String.replace is already literal — preserves MSG-02 byte-identical output.
+            boolean section = raw.indexOf('§') >= 0;
+            String formatted = raw;
+            for (int i = 0; i < args.length; i += 2) {
+                formatted = formatted.replace(args[i].toString(), args[i + 1].toString());
+            }
+            return section ? LEGACY_SECTION.deserialize(formatted) : LEGACY_AMPERSAND.deserialize(formatted);
         }
-        return formatted;
+
+        // MiniMessage path: insert each value as an unparsed (injection-safe) placeholder (D-04).
+        TagResolver[] resolvers = new TagResolver[args.length / 2];
+        for (int i = 0; i < args.length; i += 2) {
+            // Strip the surrounding % to get the tag key: "%query%" -> "query".
+            String key = args[i].toString().replace("%", "");
+            resolvers[i / 2] = Placeholder.unparsed(key, args[i + 1].toString());
+        }
+        return MM.deserialize(raw, resolvers);
     }
 
     /**
-     * Gets the formatted message with the prefix.
+     * Gets the rendered message Component.
      *
-     * @return The prefixed and formatted message.
+     * @return the message rendered to an Adventure {@link Component}.
      */
-    public String getWithPrefix() {
-        return PREFIX.get() + message;
+    public Component get() {
+        if (cached != null) return cached;
+        Component rendered = render(message);
+        // Cache only placeholder-free keys; %x% keys must parse per-format so resolvers apply.
+        if (message == null || message.indexOf('%') < 0) {
+            cached = rendered;
+        }
+        return rendered;
     }
 
     /**
-     * Gets the formatted message with the prefix and placeholders replaced.
+     * Gets the message Component with placeholders replaced.
      *
      * @param args The placeholder replacements in pairs (placeholder, value).
-     * @return The prefixed and formatted message with placeholders replaced.
+     * @return The message Component with placeholders substituted (injection-safe on the MM path).
      */
-    public String formatWithPrefix(Object... args) {
-        return PREFIX.get() + format(args);
+    public Component format(Object... args) {
+        return formatRaw(message, args);
+    }
+
+    /**
+     * Gets the message Component with the prefix prepended.
+     *
+     * @return the PREFIX Component appended with this message Component (D-02 / Pattern 4).
+     */
+    public Component getWithPrefix() {
+        return PREFIX.get().append(get());
+    }
+
+    /**
+     * Gets the message Component with the prefix prepended and placeholders replaced.
+     *
+     * @param args The placeholder replacements in pairs (placeholder, value).
+     * @return the PREFIX Component appended with the formatted message Component.
+     */
+    public Component formatWithPrefix(Object... args) {
+        return PREFIX.get().append(format(args));
     }
 }
