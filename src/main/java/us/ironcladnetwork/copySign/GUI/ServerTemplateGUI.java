@@ -1,7 +1,10 @@
 package us.ironcladnetwork.copySign.GUI;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -45,6 +48,35 @@ import java.util.Map;
  */
 public class ServerTemplateGUI {
 
+    /** Shared MiniMessage instance for authored GUI-chrome labels (D-06). */
+    private static final MiniMessage MM = MiniMessage.miniMessage();
+    /** Legacy serializer for §-coded lines emitted by SignLoreBuilder / DesignConstants. */
+    private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
+
+    /**
+     * Converts a §-coded legacy line into a non-italic Component (D-06).
+     * <p>
+     * Lines from {@link SignLoreBuilder} and {@link DesignConstants} are §-coded strings —
+     * including player/admin-supplied template names — so they are legacy-serialized (never
+     * MiniMessage parsed), which prevents any MM-tag injection through a template name (T-06-05).
+     *
+     * @param legacyLine a §-coded string
+     * @return the rendered Component with ITALIC explicitly disabled
+     */
+    private static Component legacyLine(String legacyLine) {
+        return LEGACY_SECTION.deserialize(legacyLine).decoration(TextDecoration.ITALIC, false);
+    }
+
+    /**
+     * Builds an authored chrome label from a MiniMessage string with ITALIC disabled (D-06).
+     *
+     * @param miniMessage a developer-authored MiniMessage string
+     * @return the rendered Component with ITALIC explicitly disabled
+     */
+    private static Component label(String miniMessage) {
+        return MM.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
     /**
      * Opens the server template GUI for a player.
      *
@@ -53,12 +85,12 @@ public class ServerTemplateGUI {
      * @param canEdit Whether the player can edit templates (has admin permission).
      */
     public static void open(Player player, Map<String, SavedSignData> templates, boolean canEdit) {
-        // Create inventory with premium title using design standards
-        String title = canEdit ? "§lSign Templates (Admin)" 
-                              : "§lSign Templates";
+        // Create inventory with premium title using design standards (Component overload, D-06)
+        Component title = label(canEdit ? "<bold>Sign Templates (Admin)"
+                                        : "<bold>Sign Templates");
         int size = Math.min(54, ((templates.size() + 8) / 9) * 9); // Round up to nearest multiple of 9
         if (size < 27) size = 27; // Minimum 3 rows
-        
+
         Inventory gui = Bukkit.createInventory(null, size, title);
         
         // Add template items
@@ -81,11 +113,10 @@ public class ServerTemplateGUI {
             ItemStack createButton = new ItemStack(Material.EMERALD);
             ItemMeta createMeta = createButton.getItemMeta();
             if (createMeta != null) {
-                createMeta.setDisplayName(DesignConstants.SUCCESS_ACTIVE + "§lCreate New Template");
-                List<String> createLore = new ArrayList<>();
-                createLore.add(DesignConstants.SUPPORTING + "Hold a sign with copied data");
-                createLore.add(DesignConstants.SUPPORTING + "and click to save as template");
-                createMeta.setLore(createLore);
+                createMeta.displayName(label("<green><bold>Create New Template"));
+                createMeta.lore(List.of(
+                    label("<gray>Hold a sign with copied data"),
+                    label("<gray>and click to save as template")));
                 createButton.setItemMeta(createMeta);
             }
             gui.setItem(size - 5, createButton);
@@ -95,10 +126,8 @@ public class ServerTemplateGUI {
         ItemStack closeButton = new ItemStack(Material.BARRIER);
         ItemMeta closeMeta = closeButton.getItemMeta();
         if (closeMeta != null) {
-            closeMeta.setDisplayName(DesignConstants.WARNING_INACTIVE + "Close Templates");
-            List<String> closeLore = new ArrayList<>();
-            closeLore.add(DesignConstants.SUPPORTING + "Return to game");
-            closeMeta.setLore(closeLore);
+            closeMeta.displayName(label("<red>Close Templates"));
+            closeMeta.lore(List.of(label("<gray>Return to game")));
             closeButton.setItemMeta(closeMeta);
         }
         gui.setItem(size - 1, closeButton);
@@ -107,13 +136,12 @@ public class ServerTemplateGUI {
         ItemStack infoItem = new ItemStack(Material.BOOK);
         ItemMeta infoMeta = infoItem.getItemMeta();
         if (infoMeta != null) {
-            infoMeta.setDisplayName(DesignConstants.LABEL_PROPERTY + "Server Templates");
-            List<String> infoLore = new ArrayList<>();
-            infoLore.add(DesignConstants.SUPPORTING + "These are server-wide templates");
-            infoLore.add(DesignConstants.SUPPORTING + "available to all players.");
-            infoLore.add("");
-            infoLore.add(DesignConstants.INFORMATION + "• Click " + DesignConstants.SUPPORTING + "to load a template");
-            infoMeta.setLore(infoLore);
+            infoMeta.displayName(label("<yellow><bold>Server Templates"));
+            infoMeta.lore(List.of(
+                legacyLine(DesignConstants.SUPPORTING + "These are server-wide templates"),
+                legacyLine(DesignConstants.SUPPORTING + "available to all players."),
+                legacyLine(""),
+                legacyLine(DesignConstants.INFORMATION + "• Click " + DesignConstants.SUPPORTING + "to load a template")));
             infoItem.setItemMeta(infoMeta);
         }
         gui.setItem(size - 9, infoItem);
@@ -153,8 +181,13 @@ public class ServerTemplateGUI {
         // Add template-specific instructions
         lore.add("");
         lore.add(DesignConstants.INFORMATION + "• Click " + DesignConstants.SUPPORTING + "to load template");
-        
-        meta.setLore(lore);
+
+        // Convert the §-coded List<String> to non-italic Components at the edge (D-06).
+        List<Component> loreComponents = new ArrayList<>();
+        for (String line : lore) {
+            loreComponents.add(legacyLine(line));
+        }
+        meta.lore(loreComponents);
         item.setItemMeta(meta);
         
         return item;
