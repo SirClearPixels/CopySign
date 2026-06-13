@@ -1,5 +1,7 @@
 package us.ironcladnetwork.copySign.Util;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.entity.Player;
 import us.ironcladnetwork.copySign.CopySign;
 import us.ironcladnetwork.copySign.Lang.Lang;
@@ -51,7 +53,8 @@ public class ErrorHandler {
         
         // Notify player with sanitized message (no file paths exposed)
         if (player != null) {
-            player.sendMessage(Lang.PREFIX.get() + "§cAn error occurred while " + operation + ". Please try again or contact an administrator.");
+            player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                    .deserialize("§cAn error occurred while " + operation + ". Please try again or contact an administrator.")));
         }
         
         // Attempt recovery if it's a save operation and backup exists
@@ -92,7 +95,8 @@ public class ErrorHandler {
         logger.log(Level.WARNING, detailedErrorMsg, e);
         
         // Send sanitized message to player
-        player.sendMessage(Lang.PREFIX.get() + "§cThe sign data appears to be corrupted. Please try copying the sign again.");
+        player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                .deserialize("§cThe sign data appears to be corrupted. Please try copying the sign again.")));
     }
     
     /**
@@ -143,7 +147,8 @@ public class ErrorHandler {
         
         // Send sanitized message to player
         if (player != null) {
-            player.sendMessage(Lang.PREFIX.get() + "§cAn unexpected error occurred. Please try again or contact an administrator.");
+            player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                    .deserialize("§cAn unexpected error occurred. Please try again or contact an administrator.")));
         }
     }
     

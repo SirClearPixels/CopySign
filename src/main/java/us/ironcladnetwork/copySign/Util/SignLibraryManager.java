@@ -1,5 +1,6 @@
 package us.ironcladnetwork.copySign.Util;
 
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import us.ironcladnetwork.copySign.Util.SignItemData;
 import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.Material;
@@ -260,7 +261,8 @@ public class SignLibraryManager {
             
             // Validate NBT data for security
             if (!NBTValidationUtil.validateNBTData(copiedSignFront) || !NBTValidationUtil.validateNBTData(copiedSignBack)) {
-                player.sendMessage(Lang.PREFIX.get() + "§cSign data is too large or invalid.");
+                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                        .deserialize("§cSign data is too large or invalid.")));
                 return;
             }
             
@@ -269,7 +271,8 @@ public class SignLibraryManager {
             
             // Validate color values
             if (!SignValidationUtil.isValidDyeColor(copiedFrontColor) || !SignValidationUtil.isValidDyeColor(copiedBackColor)) {
-                player.sendMessage(Lang.PREFIX.get() + "§cInvalid sign color data.");
+                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                        .deserialize("§cInvalid sign color data.")));
                 return;
             }
             
@@ -279,7 +282,8 @@ public class SignLibraryManager {
             
             // Validate sign type
             if (!isValidSignType(signType)) {
-                player.sendMessage(Lang.PREFIX.get() + "§cInvalid sign type data.");
+                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                        .deserialize("§cInvalid sign type data.")));
                 return;
             }
 
@@ -295,7 +299,8 @@ public class SignLibraryManager {
             if (lore != null) {
                 // Validate lore content
                 if (!isValidLore(lore)) {
-                    player.sendMessage(Lang.PREFIX.get() + "§cSign lore contains invalid data.");
+                    player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                            .deserialize("§cSign lore contains invalid data.")));
                     return;
                 }
             }
@@ -333,7 +338,8 @@ public class SignLibraryManager {
                     // Record metrics
                     CopySign.getInstance().getMetricsManager().recordSaveOperation(player);
                 } else {
-                    player.sendMessage(Lang.PREFIX.get() + "§cFailed to save sign. Please try again.");
+                    player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                            .deserialize("§cFailed to save sign. Please try again.")));
                     // Play error sound effect
                     CopySign.getInstance().getSoundManager().playErrorSound(player);
                 }
@@ -427,7 +433,8 @@ public class SignLibraryManager {
                 if (success) {
                     player.sendMessage(Lang.SIGN_DELETED.getWithPrefix());
                 } else {
-                    player.sendMessage(Lang.PREFIX.get() + "§cFailed to delete sign. Please try again.");
+                    player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                            .deserialize("§cFailed to delete sign. Please try again.")));
                 }
             });
         } else {
@@ -554,7 +561,8 @@ public class SignLibraryManager {
                     if (success) {
                         player.sendMessage(Lang.SIGN_RENAMED.formatWithPrefix("%old%", oldName, "%new%", newName));
                     } else {
-                        player.sendMessage(Lang.PREFIX.get() + "§cFailed to rename sign. Please try again.");
+                        player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                                .deserialize("§cFailed to rename sign. Please try again.")));
                     }
                 });
                 break;

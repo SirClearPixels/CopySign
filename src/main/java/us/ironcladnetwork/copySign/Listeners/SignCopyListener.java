@@ -1,5 +1,6 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import us.ironcladnetwork.copySign.Util.SignItemData;
 import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.Material;
@@ -200,7 +201,8 @@ public class SignCopyListener implements Listener {
             String frontTextStr = frontText.toString();
             String backTextStr = backText.toString();
             if (!NBTValidationUtil.validateNBTData(frontTextStr) || !NBTValidationUtil.validateNBTData(backTextStr)) {
-                player.sendMessage(Lang.PREFIX.get() + "§cSign text too large to copy");
+                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                        .deserialize("§cSign text too large to copy")));
                 return;
             }
 
