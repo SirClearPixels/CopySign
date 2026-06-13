@@ -1,5 +1,9 @@
 package us.ironcladnetwork.copySign.Util;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -39,6 +43,35 @@ public class SignLibraryGUI {
     public static final int INVENTORY_SIZE = 54;
     public static final int ENTRIES_PER_PAGE = 45;
 
+    /** Shared MiniMessage instance for authored GUI-chrome labels (D-06). */
+    private static final MiniMessage MM = MiniMessage.miniMessage();
+    /** Legacy serializer for §-coded lines emitted by SignLoreBuilder / DesignConstants. */
+    private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
+
+    /**
+     * Converts a §-coded legacy line into a non-italic Component (D-06).
+     * <p>
+     * Lines from {@link SignLoreBuilder} and {@link DesignConstants} are §-coded strings —
+     * including player-supplied sign names — so they are legacy-serialized (never MiniMessage
+     * parsed), which prevents any MM-tag injection through a sign name (T-06-05).
+     *
+     * @param legacyLine a §-coded string
+     * @return the rendered Component with ITALIC explicitly disabled
+     */
+    private static Component legacyLine(String legacyLine) {
+        return LEGACY_SECTION.deserialize(legacyLine).decoration(TextDecoration.ITALIC, false);
+    }
+
+    /**
+     * Builds an authored chrome label from a MiniMessage string with ITALIC disabled (D-06).
+     *
+     * @param miniMessage a developer-authored MiniMessage string
+     * @return the rendered Component with ITALIC explicitly disabled
+     */
+    private static Component label(String miniMessage) {
+        return MM.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
     /**
      * Opens the Sign Library GUI for the provided player.
      *
@@ -62,8 +95,8 @@ public class SignLibraryGUI {
         int totalPages = (int) Math.ceil(entries.size() / (double) ENTRIES_PER_PAGE);
         if (totalPages < 1)
             totalPages = 1;
-        // Premium title with enhanced formatting
-        String title = "§lSign Library (Page " + (page + 1) + "/" + totalPages + ")";        
+        // Premium title with enhanced formatting (Component overload, D-06)
+        Component title = label("<bold>Sign Library (Page " + (page + 1) + "/" + totalPages + ")");
         Inventory inv = Bukkit.createInventory(null, INVENTORY_SIZE, title);
 
         // Populate the top 45 slots with saved sign items.
@@ -95,8 +128,13 @@ public class SignLibraryGUI {
             // Add load instructions
             lore.add("");
             lore.add(DesignConstants.INFORMATION + "• Click " + DesignConstants.SUPPORTING + "to load sign");
-            
-            meta.setLore(lore);
+
+            // Convert the §-coded List<String> to non-italic Components at the edge (D-06).
+            List<Component> loreComponents = new ArrayList<>();
+            for (String line : lore) {
+                loreComponents.add(legacyLine(line));
+            }
+            meta.lore(loreComponents);
             signItem.setItemMeta(meta);
             // Place item in the slot relative to the current page.
             inv.setItem(i - start, signItem);
@@ -109,10 +147,8 @@ public class SignLibraryGUI {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta prevMeta = prev.getItemMeta();
             if (prevMeta != null) {
-                prevMeta.setDisplayName(DesignConstants.INFORMATION + "§l« Previous Page");
-                List<String> prevLore = new ArrayList<>();
-                prevLore.add(DesignConstants.SUPPORTING + "Go to page " + page);
-                prevMeta.setLore(prevLore);
+                prevMeta.displayName(label("<yellow><bold>« Previous Page"));
+                prevMeta.lore(List.of(label("<gray>Go to page " + page)));
                 prev.setItemMeta(prevMeta);
             }
             inv.setItem(45, prev);
@@ -123,10 +159,8 @@ public class SignLibraryGUI {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta nextMeta = next.getItemMeta();
             if (nextMeta != null) {
-                nextMeta.setDisplayName(DesignConstants.INFORMATION + "§lNext Page »");
-                List<String> nextLore = new ArrayList<>();
-                nextLore.add(DesignConstants.SUPPORTING + "Go to page " + (page + 2));
-                nextMeta.setLore(nextLore);
+                nextMeta.displayName(label("<yellow><bold>Next Page »"));
+                nextMeta.lore(List.of(label("<gray>Go to page " + (page + 2))));
                 next.setItemMeta(nextMeta);
             }
             inv.setItem(49, next);
@@ -136,10 +170,8 @@ public class SignLibraryGUI {
         ItemStack exit = new ItemStack(Material.BARRIER);
         ItemMeta exitMeta = exit.getItemMeta();
         if (exitMeta != null) {
-            exitMeta.setDisplayName(DesignConstants.WARNING_INACTIVE + "§lClose Library");
-            List<String> exitLore = new ArrayList<>();
-            exitLore.add(DesignConstants.SUPPORTING + "Return to game");
-            exitMeta.setLore(exitLore);
+            exitMeta.displayName(label("<red><bold>Close Library"));
+            exitMeta.lore(List.of(label("<gray>Return to game")));
             exit.setItemMeta(exitMeta);
         }
         inv.setItem(53, exit);
