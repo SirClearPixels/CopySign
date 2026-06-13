@@ -1,5 +1,8 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import us.ironcladnetwork.copySign.Util.SignItemData;
 import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.ChatColor;
@@ -162,7 +165,16 @@ public class SignLibraryGUIListener implements Listener {
                         "Library"
                     );
 
-                    updatedMeta.setLore(newLore);
+                    // Convert the §-coded lore lines to non-italic Components at the edge (D-06).
+                    // The player-supplied signName is carried through SignLoreBuilder as plain text
+                    // and only legacy-serialized here — never MiniMessage-parsed (D-04/D-07).
+                    List<Component> loreComponents = new java.util.ArrayList<>(newLore.size());
+                    for (String line : newLore) {
+                        loreComponents.add(LegacyComponentSerializer.legacySection()
+                            .deserialize(line)
+                            .decoration(TextDecoration.ITALIC, false));
+                    }
+                    updatedMeta.lore(loreComponents);
                     heldItem.setItemMeta(updatedMeta);
                 }
 
