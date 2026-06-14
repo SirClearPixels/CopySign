@@ -10,6 +10,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import us.ironcladnetwork.copySign.CopySign;
 
 import java.io.File;
+import java.util.Locale;
 
 /**
  * Enum containing all plugin messages with methods to load and format them.
@@ -275,14 +276,23 @@ public enum Lang {
             return section ? LEGACY_SECTION.deserialize(formatted) : LEGACY_AMPERSAND.deserialize(formatted);
         }
 
-        // MiniMessage path: insert each value as an unparsed (injection-safe) placeholder (D-04).
+        // MiniMessage path: rewrite each literal %x%/{x} token to a <tag> and bind its value as
+        // an unparsed (injection-safe) placeholder (D-03/D-04). MiniMessage only substitutes
+        // <tag> syntax, so the literal author token must be converted to its tag form for the
+        // resolver to apply. The author-facing %x%/{x} convention is preserved; values containing
+        // <...> render as literal text and are never parsed as tags. The tag name is derived from
+        // the developer-supplied token (never from user input), so sanitising it to a valid
+        // MiniMessage tag name (strip %, {, }) is safe.
+        String template = raw;
         TagResolver[] resolvers = new TagResolver[args.length / 2];
         for (int i = 0; i < args.length; i += 2) {
-            // Strip the surrounding % to get the tag key: "%query%" -> "query".
-            String key = args[i].toString().replace("%", "");
-            resolvers[i / 2] = Placeholder.unparsed(key, args[i + 1].toString());
+            String token = args[i].toString();                        // e.g. "%query%" or "{max}"
+            String name = token.replaceAll("[^A-Za-z0-9_-]", "")      // -> "query" / "max"
+                               .toLowerCase(Locale.ROOT);
+            template = template.replace(token, "<" + name + ">");     // %query% -> <query>
+            resolvers[i / 2] = Placeholder.unparsed(name, args[i + 1].toString());
         }
-        return MM.deserialize(raw, resolvers);
+        return MM.deserialize(template, resolvers);
     }
 
     /**

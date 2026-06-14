@@ -86,19 +86,60 @@ class LangRenderingTest {
      * MSG-01, D-04: a player-supplied value containing MiniMessage tags must be inserted as
      * literal text via Placeholder.unparsed — it appears verbatim in the rendered plain text
      * and contributes NO ClickEvent. Proves injection safety.
+     * <p>
+     * Uses the SHIPPED {@code %query%} token form (matching messages.yml), NOT the {@code <q>}
+     * tag form, so it exercises the real substitution path (regression guard for CR-01: a prior
+     * version registered the resolver against {@code <query>} while the template kept the literal
+     * {@code %query%}, so the value was never inserted).
      */
     @Test
     void placeholderValueIsLiteral() {
-        String template = "<gray>No match: <q>";
+        String template = "<yellow>No saved signs match \"%query%\".";
         String evil = "<click:run_command:/op me>evil</click>";
 
-        Component rendered = Lang.formatRaw(template, "%q%", evil);
+        Component rendered = Lang.formatRaw(template, "%query%", evil);
 
         String plain = PLAIN.serialize(rendered);
         assertTrue(plain.contains("<click:run_command:/op me>"),
                 "Player value must appear as literal text, not be parsed as a tag. Got: " + plain);
+        assertFalse(plain.contains("%query%"),
+                "The literal %query% token must be substituted, not left in the output. Got: " + plain);
         assertFalse(hasClickEvent(rendered),
                 "Player-supplied value must NOT introduce a ClickEvent (injection blocked)");
+    }
+
+    /**
+     * CR-01 regression: a {@code %name%} token in a MiniMessage-path string must have its value
+     * substituted in. Pins the shipped-default behavior (e.g. {@code SIGN_LOADED_TO_HELD}).
+     */
+    @Test
+    void percentTokenIsSubstitutedOnMiniMessagePath() {
+        String template = "<green>Sign '%name%' loaded to your held sign!";
+        Component rendered = Lang.formatRaw(template, "%name%", "myHouse");
+
+        String plain = PLAIN.serialize(rendered);
+        assertTrue(plain.contains("myHouse"),
+                "Value 'myHouse' must be substituted for %name%. Got: " + plain);
+        assertFalse(plain.contains("%name%"),
+                "The literal %name% token must not survive substitution. Got: " + plain);
+    }
+
+    /**
+     * CR-02 regression: a brace-style {@code {max}} token must substitute its value without
+     * throwing. A prior version passed the raw {@code {max}} key to Placeholder.unparsed, which
+     * threw IllegalArgumentException (tag names cannot contain braces) and crashed the branch
+     * (e.g. {@code MAX_SIGNS_REACHED}).
+     */
+    @Test
+    void bracePlaceholderSubstitutesWithoutThrowing() {
+        String template = "<red>You have reached the maximum number of saved signs ({max})!";
+        Component rendered = Lang.formatRaw(template, "{max}", "42");
+
+        String plain = PLAIN.serialize(rendered);
+        assertTrue(plain.contains("42"),
+                "Value '42' must be substituted for {max}. Got: " + plain);
+        assertFalse(plain.contains("{max}"),
+                "The literal {max} token must not survive substitution. Got: " + plain);
     }
 
     /** Recursively checks whether any node in the Component tree carries a ClickEvent. */
