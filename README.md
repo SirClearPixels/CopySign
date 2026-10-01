@@ -1,4 +1,17 @@
-# CopySign Plugin
+# CopySign
+
+[![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/plugin/copysign)
+[![Modrinth Downloads](https://img.shields.io/modrinth/dt/copysign?style=flat-square&logo=modrinth&color=00AF5C&label=Modrinth)](https://modrinth.com/plugin/copysign)
+
+[![Spigot](https://img.shields.io/badge/Spigot-ED8106?style=for-the-badge&logo=spigotmc&logoColor=white)](https://www.spigotmc.org/resources/copysign.134640/)
+[![Spigot Downloads](https://img.shields.io/spiget/downloads/134640?style=flat-square&logo=spigotmc&color=ED8106&label=Spigot)](https://www.spigotmc.org/resources/copysign.134640/)
+[![Spigot Rating](https://img.shields.io/spiget/stars/134640?style=flat-square&logo=spigotmc&color=ED8106)](https://www.spigotmc.org/resources/copysign.134640/)
+
+[![Hangar](https://img.shields.io/badge/Hangar-004C99?style=for-the-badge&logo=papermc&logoColor=white)](https://hangar.papermc.io/SirClearPixels/CopySign)
+[![Hangar Downloads](https://img.shields.io/hangar/dt/CopySign?style=for-the-badge&logo=papermc&color=004C99&label=Downloads)](https://hangar.papermc.io/SirClearPixels/CopySign)
+
+[![Paper](https://img.shields.io/badge/Paper-1.21.x-0099CC?style=flat-square&logo=papermc&logoColor=white)](https://papermc.io/)
+[![Folia](https://img.shields.io/badge/Folia-Compatible-2A2C2A?style=flat-square&logo=papermc&logoColor=white)](https://papermc.io/software/folia)
 
 A powerful Minecraft Spigot plugin that allows players to copy and paste sign text, colors, and glow states with NBT data storage and a personal sign library system.
 
