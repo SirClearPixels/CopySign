@@ -97,7 +97,7 @@ public class SignLibraryGUI {
             totalPages = 1;
         // Premium title with enhanced formatting (Component overload, D-06)
         Component title = label("<bold>Sign Library (Page " + (page + 1) + "/" + totalPages + ")");
-        Inventory inv = Bukkit.createInventory(null, INVENTORY_SIZE, title);
+        Inventory inv = PlatformCompat.createInventory(INVENTORY_SIZE, title);
 
         // Populate the top 45 slots with saved sign items.
         int start = page * ENTRIES_PER_PAGE;
@@ -134,7 +134,7 @@ public class SignLibraryGUI {
             for (String line : lore) {
                 loreComponents.add(legacyLine(line));
             }
-            meta.lore(loreComponents);
+            PlatformCompat.lore(meta, loreComponents);
             signItem.setItemMeta(meta);
             // Place item in the slot relative to the current page.
             inv.setItem(i - start, signItem);
@@ -147,8 +147,8 @@ public class SignLibraryGUI {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta prevMeta = prev.getItemMeta();
             if (prevMeta != null) {
-                prevMeta.displayName(label("<yellow><bold>« Previous Page"));
-                prevMeta.lore(List.of(label("<gray>Go to page " + page)));
+                PlatformCompat.displayName(prevMeta, label("<yellow><bold>« Previous Page"));
+                PlatformCompat.lore(prevMeta, List.of(label("<gray>Go to page " + page)));
                 prev.setItemMeta(prevMeta);
             }
             inv.setItem(45, prev);
@@ -159,8 +159,8 @@ public class SignLibraryGUI {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta nextMeta = next.getItemMeta();
             if (nextMeta != null) {
-                nextMeta.displayName(label("<yellow><bold>Next Page »"));
-                nextMeta.lore(List.of(label("<gray>Go to page " + (page + 2))));
+                PlatformCompat.displayName(nextMeta, label("<yellow><bold>Next Page »"));
+                PlatformCompat.lore(nextMeta, List.of(label("<gray>Go to page " + (page + 2))));
                 next.setItemMeta(nextMeta);
             }
             inv.setItem(49, next);
@@ -170,8 +170,8 @@ public class SignLibraryGUI {
         ItemStack exit = new ItemStack(Material.BARRIER);
         ItemMeta exitMeta = exit.getItemMeta();
         if (exitMeta != null) {
-            exitMeta.displayName(label("<red><bold>Close Library"));
-            exitMeta.lore(List.of(label("<gray>Return to game")));
+            PlatformCompat.displayName(exitMeta, label("<red><bold>Close Library"));
+            PlatformCompat.lore(exitMeta, List.of(label("<gray>Return to game")));
             exit.setItemMeta(exitMeta);
         }
         inv.setItem(53, exit);

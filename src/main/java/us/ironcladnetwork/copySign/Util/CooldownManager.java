@@ -123,7 +123,7 @@ public class CooldownManager {
     public void sendCooldownMessage(Player player, String command) {
         int remaining = getRemainingCooldown(player, command);
         String timeUnit = remaining == 1 ? "second" : "seconds";
-        player.sendMessage(Lang.COOLDOWN_MESSAGE.formatWithPrefix("%time%", String.valueOf(remaining), "%unit%", timeUnit));
+        PlatformCompat.sendMessage(player, Lang.COOLDOWN_MESSAGE.formatWithPrefix("%time%", String.valueOf(remaining), "%unit%", timeUnit));
     }
     
     /**

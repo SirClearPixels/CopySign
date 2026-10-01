@@ -1,5 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import us.ironcladnetwork.copySign.Util.PlatformCompat;
+
 import us.ironcladnetwork.copySign.Util.SignItemData;
 import us.ironcladnetwork.copySign.Util.SignItemStorage;
 import org.bukkit.Material;
@@ -47,7 +49,7 @@ public class SignPlaceListener implements Listener {
         // No assignment needed
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onSignPlace(BlockPlaceEvent event) {
         Block block = event.getBlockPlaced();
         // Ensure the placed block is a sign.
@@ -81,14 +83,14 @@ public class SignPlaceListener implements Listener {
         
         // Check if the sign type is allowed for pasting
         if (!SignValidationUtil.isSignTypeAllowed(itemStack.getType().name())) {
-            player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_PASTE.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.SIGN_TYPE_NOT_ALLOWED_PASTE.getWithPrefix());
             event.setCancelled(true); // Cancel the sign placement
             return;
         }
         
         // Check WorldGuard protection if enabled
         if (!CopySign.getInstance().getWorldGuardIntegration().canPasteSign(player, block.getLocation())) {
-            player.sendMessage(Lang.WORLDGUARD_PASTE_DENIED.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.WORLDGUARD_PASTE_DENIED.getWithPrefix());
             event.setCancelled(true); // Cancel the sign placement
             return;
         }
@@ -137,4 +139,4 @@ public class SignPlaceListener implements Listener {
         CopySign.getCooldownManager().recordCommandUse(player, "paste");
     }
     
-} 
+}

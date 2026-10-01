@@ -168,7 +168,8 @@ public class SignLibraryManager {
      * @param callback Optional callback to execute after save completion
      * @return CompletableFuture that completes when save is done
      */
-    private CompletableFuture<Boolean> saveConfigAsync(Consumer<Boolean> callback) {
+    private CompletableFuture<Boolean> saveConfigAsync(Consumer<Boolean> callback) { return saveConfigAsync(null, callback); }
+    private CompletableFuture<Boolean> saveConfigAsync(Player owner, Consumer<Boolean> callback) {
         return CompletableFuture.supplyAsync(() -> {
             // Acquire lock for thread-safe access to signLibraryConfig
             configLock.lock();
@@ -199,7 +200,8 @@ public class SignLibraryManager {
         }).thenApply(result -> {
             if (callback != null) {
                 // Execute callback on global region scheduler
-                SchedulerUtil.runGlobal(plugin, () -> callback.accept(result));
+                if (owner != null) SchedulerUtil.runAtEntity(plugin, owner, () -> callback.accept(result));
+                else SchedulerUtil.runGlobal(plugin, () -> callback.accept(result));
             }
             return result;
         });
@@ -225,20 +227,20 @@ public class SignLibraryManager {
             }
             
             if (!ErrorHandler.isValidFileName(name, 32)) {
-                player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
                 return;
             }
             
             // Validate that the signItem is not null and is of a sign type.
             if (signItem == null || signItem.getType() == Material.AIR || !signItem.getType().name().endsWith("_SIGN")) {
-                player.sendMessage(Lang.INVALID_SIGN_ITEM_ERROR.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.INVALID_SIGN_ITEM_ERROR.getWithPrefix());
                 return;
             }
             
             // Read the copied-sign payload (PDC, with legacy NBT-API fallback).
             java.util.Optional<SignItemData> copiedOpt = SignItemStorage.read(signItem);
             if (copiedOpt.isEmpty()) {
-                player.sendMessage(Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
                 return;
             }
             SignItemData copied = copiedOpt.get();
@@ -250,7 +252,7 @@ public class SignLibraryManager {
                 Map<String, SavedSignData> existingSigns = getAllSigns(player);
                 // If the sign doesn't already exist and we're at the limit
                 if (!existingSigns.containsKey(name) && existingSigns.size() >= maxSigns) {
-                    player.sendMessage(Lang.MAX_SIGNS_REACHED.formatWithPrefix("{max}", String.valueOf(maxSigns)));
+                    PlatformCompat.sendMessage(player, Lang.MAX_SIGNS_REACHED.formatWithPrefix("{max}", String.valueOf(maxSigns)));
                     return;
                 }
             }
@@ -261,7 +263,7 @@ public class SignLibraryManager {
             
             // Validate NBT data for security
             if (!NBTValidationUtil.validateNBTData(copiedSignFront) || !NBTValidationUtil.validateNBTData(copiedSignBack)) {
-                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                         .deserialize("§cSign data is too large or invalid.")));
                 return;
             }
@@ -271,7 +273,7 @@ public class SignLibraryManager {
             
             // Validate color values
             if (!SignValidationUtil.isValidDyeColor(copiedFrontColor) || !SignValidationUtil.isValidDyeColor(copiedBackColor)) {
-                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                         .deserialize("§cInvalid sign color data.")));
                 return;
             }
@@ -282,7 +284,7 @@ public class SignLibraryManager {
             
             // Validate sign type
             if (!isValidSignType(signType)) {
-                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                         .deserialize("§cInvalid sign type data.")));
                 return;
             }
@@ -299,7 +301,7 @@ public class SignLibraryManager {
             if (lore != null) {
                 // Validate lore content
                 if (!isValidLore(lore)) {
-                    player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                    PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                             .deserialize("§cSign lore contains invalid data.")));
                     return;
                 }
@@ -330,15 +332,15 @@ public class SignLibraryManager {
             }
 
             // Persist the updated configuration asynchronously
-            saveConfigAsync(success -> {
+            saveConfigAsync(player, success -> {
                 if (success) {
-                    player.sendMessage(Lang.SIGN_SAVED_SUCCESSFULLY.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.SIGN_SAVED_SUCCESSFULLY.getWithPrefix());
                     // Play save sound effect
                     CopySign.getInstance().getSoundManager().playSaveSound(player);
                     // Record metrics
                     CopySign.getInstance().getMetricsManager().recordSaveOperation(player);
                 } else {
-                    player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                    PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                             .deserialize("§cFailed to save sign. Please try again.")));
                     // Play error sound effect
                     CopySign.getInstance().getSoundManager().playErrorSound(player);
@@ -429,16 +431,16 @@ public class SignLibraryManager {
         }
         
         if (signExists) {
-            saveConfigAsync(success -> {
+            saveConfigAsync(player, success -> {
                 if (success) {
-                    player.sendMessage(Lang.SIGN_DELETED.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.SIGN_DELETED.getWithPrefix());
                 } else {
-                    player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                    PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                             .deserialize("§cFailed to delete sign. Please try again.")));
                 }
             });
         } else {
-            player.sendMessage(Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
         }
     }
 
@@ -557,23 +559,23 @@ public class SignLibraryManager {
 
         switch (status) {
             case OK:
-                saveConfigAsync(success -> {
+                saveConfigAsync(player, success -> {
                     if (success) {
-                        player.sendMessage(Lang.SIGN_RENAMED.formatWithPrefix("%old%", oldName, "%new%", newName));
+                        PlatformCompat.sendMessage(player, Lang.SIGN_RENAMED.formatWithPrefix("%old%", oldName, "%new%", newName));
                     } else {
-                        player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                        PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                                 .deserialize("§cFailed to rename sign. Please try again.")));
                     }
                 });
                 break;
             case NOT_FOUND:
-                player.sendMessage(Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.SAVED_SIGN_NOT_FOUND.getWithPrefix());
                 break;
             case TARGET_EXISTS:
-                player.sendMessage(Lang.SIGN_RENAME_TARGET_EXISTS.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.SIGN_RENAME_TARGET_EXISTS.getWithPrefix());
                 break;
             case INVALID_NAME:
-                player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
                 break;
         }
     }

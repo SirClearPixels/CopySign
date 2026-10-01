@@ -1,5 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import us.ironcladnetwork.copySign.Util.PlatformCompat;
+
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import us.ironcladnetwork.copySign.Util.SignItemData;
 import us.ironcladnetwork.copySign.Util.SignItemStorage;
@@ -81,7 +83,7 @@ public class SignCopyListener implements Listener {
             // Only show the disabled message if they're actually clicking on a sign
             Block clickedBlock = event.getClickedBlock();
             if (clickedBlock != null && clickedBlock.getState() instanceof Sign) {
-                player.sendMessage(Lang.COPYSIGN_DISABLED.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.COPYSIGN_DISABLED.getWithPrefix());
             }
             // Otherwise silently return
             return;
@@ -91,7 +93,7 @@ public class SignCopyListener implements Listener {
         if (!CopySign.getInstance().getConfigManager().isSignCopyEnabled()) {
             Block clickedBlock = event.getClickedBlock();
             if (clickedBlock != null && clickedBlock.getState() instanceof Sign) {
-                player.sendMessage(Lang.COMMAND_FEATURE_DISABLED.formatWithPrefix("%feature%", "Sign copying"));
+                PlatformCompat.sendMessage(player, Lang.COMMAND_FEATURE_DISABLED.formatWithPrefix("%feature%", "Sign copying"));
             }
             return;
         }
@@ -105,7 +107,7 @@ public class SignCopyListener implements Listener {
 
         // Check if the player has permission to use the sign copy feature.
         if (!Permissions.canUse(player)) {
-            player.sendMessage(Lang.NO_PERMISSION_USE.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.NO_PERMISSION_USE.getWithPrefix());
             return;
         }
         
@@ -117,13 +119,13 @@ public class SignCopyListener implements Listener {
 
         // Check if the clicked sign type is allowed
         if (!SignValidationUtil.isSignTypeAllowed(clickedBlock.getType().name())) {
-            player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_COPY.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.SIGN_TYPE_NOT_ALLOWED_COPY.getWithPrefix());
             return;
         }
         
         // Check if the held sign type is allowed
         if (!SignValidationUtil.isSignTypeAllowed(heldItem.getType().name())) {
-            player.sendMessage(Lang.SIGN_TYPE_NOT_ALLOWED_COPY.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.SIGN_TYPE_NOT_ALLOWED_COPY.getWithPrefix());
             return;
         }
 
@@ -136,19 +138,19 @@ public class SignCopyListener implements Listener {
         
         // Check if player has permission to copy from this sign type
         if (!Permissions.canCopySignType(player, clickedHanging)) {
-            player.sendMessage(Lang.NO_PERMISSION_COPY_SIGN_TYPE.formatWithPrefix("%type%", clickedHanging ? "hanging" : "regular"));
+            PlatformCompat.sendMessage(player, Lang.NO_PERMISSION_COPY_SIGN_TYPE.formatWithPrefix("%type%", clickedHanging ? "hanging" : "regular"));
             return;
         }
         
         // Check if player has permission to paste to this sign type
         if (!Permissions.canPasteSignType(player, heldHanging)) {
-            player.sendMessage(Lang.NO_PERMISSION_PASTE_SIGN_TYPE.formatWithPrefix("%type%", heldHanging ? "hanging" : "regular"));
+            PlatformCompat.sendMessage(player, Lang.NO_PERMISSION_PASTE_SIGN_TYPE.formatWithPrefix("%type%", heldHanging ? "hanging" : "regular"));
             return;
         }
         
         // If the sign types do not match, send an error message and cancel the copy.
         if (heldHanging != clickedHanging) {
-            player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
+            PlatformCompat.sendMessage(player, Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
                 "%held%", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get(),
                 "%target%", clickedHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
             return;
@@ -156,7 +158,7 @@ public class SignCopyListener implements Listener {
         
         // Check WorldGuard protection if enabled
         if (!CopySign.getInstance().getWorldGuardIntegration().canCopySign(player, clickedBlock.getLocation())) {
-            player.sendMessage(Lang.WORLDGUARD_COPY_DENIED.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.WORLDGUARD_COPY_DENIED.getWithPrefix());
             return;
         }
 
@@ -201,7 +203,7 @@ public class SignCopyListener implements Listener {
             String frontTextStr = frontText.toString();
             String backTextStr = backText.toString();
             if (!NBTValidationUtil.validateNBTData(frontTextStr) || !NBTValidationUtil.validateNBTData(backTextStr)) {
-                player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+                PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                         .deserialize("§cSign text too large to copy")));
                 return;
             }
@@ -243,7 +245,7 @@ public class SignCopyListener implements Listener {
             // The held item now carries the copied data + lore.
             player.getInventory().setItemInMainHand(heldItem);
 
-            player.sendMessage(Lang.SIGN_COPIED.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.SIGN_COPIED.getWithPrefix());
             
             // Play copy sound
             CopySign.getInstance().getSoundManager().playCopySound(player);
@@ -253,7 +255,7 @@ public class SignCopyListener implements Listener {
             
             // Send enhanced mixed glow state warning if applicable
             if (frontGlowing != backGlowing && (Permissions.canCopyGlow(player) && CopySign.getInstance().getConfigManager().isCopyGlowEnabled())) {
-                player.sendMessage(DesignConstants.createMixedGlowWarning());
+                PlatformCompat.sendMessage(player, DesignConstants.createMixedGlowWarning());
             }
             
             // Record command usage

@@ -124,20 +124,20 @@ public class ServerTemplateManager {
     public boolean saveTemplate(Player player, String name, ItemStack signItem) {
         // Check admin permission
         if (!player.hasPermission("copysign.admin")) {
-            player.sendMessage(Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
             return false;
         }
         
         // Validate that the signItem is not null and is of a sign type.
         if (signItem == null || signItem.getType() == Material.AIR || !signItem.getType().name().endsWith("_SIGN")) {
-            player.sendMessage(Lang.INVALID_SIGN_ITEM_ERROR.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.INVALID_SIGN_ITEM_ERROR.getWithPrefix());
             return false;
         }
         
         // Read the copied-sign payload (PDC, with legacy NBT-API fallback).
         java.util.Optional<SignItemData> copiedOpt = SignItemStorage.read(signItem);
         if (copiedOpt.isEmpty()) {
-            player.sendMessage(Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.SIGN_NO_REQUIRED_DATA.getWithPrefix());
             return false;
         }
         SignItemData copied = copiedOpt.get();
@@ -174,7 +174,7 @@ public class ServerTemplateManager {
 
         // Persist the updated configuration.
         saveConfig();
-        player.sendMessage(Lang.TEMPLATE_SAVE_SUCCESS.formatWithPrefix("%name%", name));
+        PlatformCompat.sendMessage(player, Lang.TEMPLATE_SAVE_SUCCESS.formatWithPrefix("%name%", name));
         return true;
     }
 
@@ -222,19 +222,19 @@ public class ServerTemplateManager {
     public boolean deleteTemplate(Player player, String name) {
         // Check admin permission
         if (!player.hasPermission("copysign.admin")) {
-            player.sendMessage(Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
             return false;
         }
         
         ConfigurationSection templatesSection = templateConfig.getConfigurationSection("templates");
         if (templatesSection == null || !templatesSection.contains(name)) {
-            player.sendMessage(Lang.TEMPLATE_NOT_FOUND_ERROR.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.TEMPLATE_NOT_FOUND_ERROR.getWithPrefix());
             return false;
         }
         
         templatesSection.set(name, null);
         saveConfig();
-        player.sendMessage(Lang.TEMPLATE_DELETE_SUCCESS.formatWithPrefix("%name%", name));
+        PlatformCompat.sendMessage(player, Lang.TEMPLATE_DELETE_SUCCESS.formatWithPrefix("%name%", name));
         return true;
     }
 
@@ -306,7 +306,7 @@ public class ServerTemplateManager {
     public boolean renameTemplate(Player player, String oldName, String newName) {
         // Admin gate first (LIB-02 — templates stay admin-only).
         if (!player.hasPermission(Permissions.ADMIN)) {
-            player.sendMessage(Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.NO_PERMISSION_TEMPLATES.getWithPrefix());
             return false;
         }
 
@@ -315,17 +315,17 @@ public class ServerTemplateManager {
         switch (status) {
             case OK:
                 saveConfig();
-                player.sendMessage(Lang.TEMPLATE_RENAMED.formatWithPrefix("%old%", oldName, "%new%", newName));
+                PlatformCompat.sendMessage(player, Lang.TEMPLATE_RENAMED.formatWithPrefix("%old%", oldName, "%new%", newName));
                 return true;
             case NOT_FOUND:
-                player.sendMessage(Lang.TEMPLATE_NOT_FOUND.formatWithPrefix("%name%", oldName));
+                PlatformCompat.sendMessage(player, Lang.TEMPLATE_NOT_FOUND.formatWithPrefix("%name%", oldName));
                 return false;
             case TARGET_EXISTS:
-                player.sendMessage(Lang.TEMPLATE_RENAME_TARGET_EXISTS.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.TEMPLATE_RENAME_TARGET_EXISTS.getWithPrefix());
                 return false;
             case INVALID_NAME:
             default:
-                player.sendMessage(Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.INVALID_SIGN_NAME_FORMAT.getWithPrefix());
                 return false;
         }
     }

@@ -1,5 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import us.ironcladnetwork.copySign.Util.PlatformCompat;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -111,20 +113,20 @@ public class SignLibraryGUIListener implements Listener {
                 }
                 
                 if (signName == null) {
-                    player.sendMessage(Lang.SIGN_NAME_NOT_IDENTIFIED.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.SIGN_NAME_NOT_IDENTIFIED.getWithPrefix());
                     return;
                 }
                 
                 // Load sign data
                 SavedSignData signData = signLibraryManager.getSign(player, signName);
                 if (signData == null) {
-                    player.sendMessage(Lang.SIGN_NOT_FOUND.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.SIGN_NOT_FOUND.getWithPrefix());
                     return;
                 }
                 
                 ItemStack heldItem = player.getInventory().getItemInMainHand();
                 if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
-                    player.sendMessage(Lang.MUST_HOLD_SIGN.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.MUST_HOLD_SIGN.getWithPrefix());
                     return;
                 }
                 
@@ -132,7 +134,7 @@ public class SignLibraryGUIListener implements Listener {
                 boolean heldHanging = heldItem.getType().name().contains("HANGING_SIGN");
                 boolean savedHanging = signData.getSignType().equalsIgnoreCase("hanging");
                 if (heldHanging != savedHanging) {
-                    player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
+                    PlatformCompat.sendMessage(player, Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
                         "%held%", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get(),
                         "%target%", savedHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
                     return;
@@ -174,17 +176,17 @@ public class SignLibraryGUIListener implements Listener {
                             .deserialize(line)
                             .decoration(TextDecoration.ITALIC, false));
                     }
-                    updatedMeta.lore(loreComponents);
+                    PlatformCompat.lore(updatedMeta, loreComponents);
                     heldItem.setItemMeta(updatedMeta);
                 }
 
                 player.getInventory().setItemInMainHand(heldItem);
                 player.closeInventory();
-                player.sendMessage(Lang.SIGN_LOADED_TO_HELD.formatWithPrefix("%name%", signName));
+                PlatformCompat.sendMessage(player, Lang.SIGN_LOADED_TO_HELD.formatWithPrefix("%name%", signName));
                 
                 // Send enhanced mixed glow state warning if applicable
                 if (signData.hasMixedGlowStates()) {
-                    player.sendMessage(DesignConstants.createMixedGlowWarning());
+                    PlatformCompat.sendMessage(player, DesignConstants.createMixedGlowWarning());
                 }
             }
         }

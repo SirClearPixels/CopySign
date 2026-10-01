@@ -1,5 +1,7 @@
 package us.ironcladnetwork.copySign.GUI;
 
+import us.ironcladnetwork.copySign.Util.PlatformCompat;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -91,7 +93,7 @@ public class ServerTemplateGUI {
         int size = Math.min(54, ((templates.size() + 8) / 9) * 9); // Round up to nearest multiple of 9
         if (size < 27) size = 27; // Minimum 3 rows
 
-        Inventory gui = Bukkit.createInventory(null, size, title);
+        Inventory gui = PlatformCompat.createInventory(size, title);
         
         // Add template items
         int slot = 0;
@@ -113,8 +115,8 @@ public class ServerTemplateGUI {
             ItemStack createButton = new ItemStack(Material.EMERALD);
             ItemMeta createMeta = createButton.getItemMeta();
             if (createMeta != null) {
-                createMeta.displayName(label("<green><bold>Create New Template"));
-                createMeta.lore(List.of(
+                PlatformCompat.displayName(createMeta, label("<green><bold>Create New Template"));
+                PlatformCompat.lore(createMeta, List.of(
                     label("<gray>Hold a sign with copied data"),
                     label("<gray>and click to save as template")));
                 createButton.setItemMeta(createMeta);
@@ -126,8 +128,8 @@ public class ServerTemplateGUI {
         ItemStack closeButton = new ItemStack(Material.BARRIER);
         ItemMeta closeMeta = closeButton.getItemMeta();
         if (closeMeta != null) {
-            closeMeta.displayName(label("<red>Close Templates"));
-            closeMeta.lore(List.of(label("<gray>Return to game")));
+            PlatformCompat.displayName(closeMeta, label("<red>Close Templates"));
+            PlatformCompat.lore(closeMeta, List.of(label("<gray>Return to game")));
             closeButton.setItemMeta(closeMeta);
         }
         gui.setItem(size - 1, closeButton);
@@ -136,8 +138,8 @@ public class ServerTemplateGUI {
         ItemStack infoItem = new ItemStack(Material.BOOK);
         ItemMeta infoMeta = infoItem.getItemMeta();
         if (infoMeta != null) {
-            infoMeta.displayName(label("<yellow><bold>Server Templates"));
-            infoMeta.lore(List.of(
+            PlatformCompat.displayName(infoMeta, label("<yellow><bold>Server Templates"));
+            PlatformCompat.lore(infoMeta, List.of(
                 legacyLine(DesignConstants.SUPPORTING + "These are server-wide templates"),
                 legacyLine(DesignConstants.SUPPORTING + "available to all players."),
                 legacyLine(""),
@@ -187,7 +189,7 @@ public class ServerTemplateGUI {
         for (String line : lore) {
             loreComponents.add(legacyLine(line));
         }
-        meta.lore(loreComponents);
+        PlatformCompat.lore(meta, loreComponents);
         item.setItemMeta(meta);
         
         return item;

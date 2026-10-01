@@ -53,7 +53,7 @@ public class ErrorHandler {
         
         // Notify player with sanitized message (no file paths exposed)
         if (player != null) {
-            player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+            PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                     .deserialize("§cAn error occurred while " + operation + ". Please try again or contact an administrator.")));
         }
         
@@ -95,7 +95,7 @@ public class ErrorHandler {
         logger.log(Level.WARNING, detailedErrorMsg, e);
         
         // Send sanitized message to player
-        player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+        PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                 .deserialize("§cThe sign data appears to be corrupted. Please try copying the sign again.")));
     }
     
@@ -129,7 +129,7 @@ public class ErrorHandler {
         logger.log(Level.WARNING, errorMsg, e);
         
         if (player != null) {
-            player.sendMessage(Lang.PERFORMANCE_ERROR_RETRY.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.PERFORMANCE_ERROR_RETRY.getWithPrefix());
         }
     }
     
@@ -147,7 +147,7 @@ public class ErrorHandler {
         
         // Send sanitized message to player
         if (player != null) {
-            player.sendMessage(Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
+            PlatformCompat.sendMessage(player, Lang.PREFIX.get().append(LegacyComponentSerializer.legacySection()
                     .deserialize("§cAn unexpected error occurred. Please try again or contact an administrator.")));
         }
     }

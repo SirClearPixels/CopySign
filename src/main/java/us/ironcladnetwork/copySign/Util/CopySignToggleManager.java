@@ -125,7 +125,7 @@ public class CopySignToggleManager {
     /**
      * Saves the current player states into the players.yml file.
      */
-    private void saveConfig() {
+    private synchronized void saveConfig() {
         try {
             // Create backup before saving
             ErrorHandler.createBackup(playersFile);
@@ -139,7 +139,7 @@ public class CopySignToggleManager {
                     playersConfig.set("players." + uuid.toString(), state)
             );
             
-            playersConfig.save(playersFile);
+            synchronized (this) { playersConfig.save(playersFile); }
             ErrorHandler.debug("Successfully saved players.yml");
             
         } catch (IOException e) {
@@ -157,6 +157,7 @@ public class CopySignToggleManager {
      * @param enabled The new toggle state (for debug logging)
      */
     private void saveConfigAsync(Player player, boolean enabled) {
+        String playerName = player.getName();
         CompletableFuture.runAsync(() -> {
             try {
                 // Create backup before saving (async)
@@ -168,9 +169,9 @@ public class CopySignToggleManager {
                 }
                 
                 // Save the configuration file
-                playersConfig.save(playersFile);
+                synchronized (this) { playersConfig.save(playersFile); }
                 
-                ErrorHandler.debug("Asynchronously saved toggle state for " + player.getName() + " to " + enabled);
+                ErrorHandler.debug("Asynchronously saved toggle state for " + playerName + " to " + enabled);
                 
             } catch (IOException e) {
                 ErrorHandler.handleFileError("saving player toggle state", playersFile, e, player);
@@ -186,13 +187,13 @@ public class CopySignToggleManager {
      * 
      * @return true if save was successful, false otherwise
      */
-    public boolean saveConfigSync() {
+    public synchronized boolean saveConfigSync() {
         try {
             // Create backup before saving
             ErrorHandler.createBackup(playersFile);
             
             // Save the configuration file
-            playersConfig.save(playersFile);
+            synchronized (this) { playersConfig.save(playersFile); }
             
             ErrorHandler.debug("Synchronously saved player toggle states");
             return true;
@@ -213,7 +214,7 @@ public class CopySignToggleManager {
      * @param player The player to check.
      * @return true if CopySign is enabled, false otherwise.
      */
-    public boolean isEnabled(Player player) {
+    public synchronized boolean isEnabled(Player player) {
         boolean defaultEnabled = plugin.getConfigBoolean("general.default-enabled", true);
         
         // If caching is disabled, always load from config
@@ -234,7 +235,7 @@ public class CopySignToggleManager {
      * @param player  The player to update.
      * @param enabled true to enable CopySign, false to disable.
      */
-    public void setCopySignEnabled(Player player, boolean enabled) {
+    public synchronized void setCopySignEnabled(Player player, boolean enabled) {
         try {
             if (player == null) {
                 ErrorHandler.handleGeneralError("setting toggle state with null player", new IllegalArgumentException("Player cannot be null"), null);

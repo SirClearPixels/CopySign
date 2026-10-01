@@ -53,7 +53,7 @@ public class SchedulerUtil {
      */
     public static void runAsync(Plugin plugin, Runnable task) {
         if (IS_FOLIA) {
-            Bukkit.getAsyncScheduler().runNow(plugin, (t) -> task.run());
+            FoliaBridge.async().runNow(plugin, (t) -> task.run());
         } else {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, task);
         }
@@ -70,7 +70,7 @@ public class SchedulerUtil {
     public static void runAsyncDelayed(Plugin plugin, Runnable task, long delayTicks) {
         if (IS_FOLIA) {
             long delayMs = delayTicks * 50; // Convert ticks to milliseconds
-            Bukkit.getAsyncScheduler().runDelayed(plugin, (t) -> task.run(), delayMs, TimeUnit.MILLISECONDS);
+            FoliaBridge.async().runDelayed(plugin, (t) -> task.run(), delayMs, TimeUnit.MILLISECONDS);
         } else {
             Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, task, delayTicks);
         }
@@ -90,7 +90,7 @@ public class SchedulerUtil {
         if (IS_FOLIA) {
             long delayMs = delayTicks * 50; // Convert ticks to milliseconds
             long periodMs = periodTicks * 50;
-            return Bukkit.getAsyncScheduler().runAtFixedRate(plugin, (t) -> task.run(), delayMs, periodMs, TimeUnit.MILLISECONDS);
+            return FoliaBridge.async().runAtFixedRate(plugin, (t) -> task.run(), delayMs, periodMs, TimeUnit.MILLISECONDS);
         } else {
             return Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, delayTicks, periodTicks);
         }
@@ -106,7 +106,7 @@ public class SchedulerUtil {
      */
     public static void runGlobal(Plugin plugin, Runnable task) {
         if (IS_FOLIA) {
-            Bukkit.getGlobalRegionScheduler().run(plugin, (t) -> task.run());
+            FoliaBridge.global().run(plugin, (t) -> task.run());
         } else {
             Bukkit.getScheduler().runTask(plugin, task);
         }
@@ -123,7 +123,7 @@ public class SchedulerUtil {
      */
     public static void runGlobalDelayed(Plugin plugin, Runnable task, long delayTicks) {
         if (IS_FOLIA) {
-            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, (t) -> task.run(), delayTicks);
+            FoliaBridge.global().runDelayed(plugin, (t) -> task.run(), delayTicks);
         } else {
             Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
         }
@@ -141,7 +141,7 @@ public class SchedulerUtil {
      */
     public static void runAtLocation(Plugin plugin, Location location, Runnable task) {
         if (IS_FOLIA) {
-            Bukkit.getRegionScheduler().run(plugin, location, (t) -> task.run());
+            FoliaBridge.region().run(plugin, location, (t) -> task.run());
         } else {
             Bukkit.getScheduler().runTask(plugin, task);
         }
@@ -160,7 +160,7 @@ public class SchedulerUtil {
      */
     public static void runAtLocationDelayed(Plugin plugin, Location location, Runnable task, long delayTicks) {
         if (IS_FOLIA) {
-            Bukkit.getRegionScheduler().runDelayed(plugin, location, (t) -> task.run(), delayTicks);
+            FoliaBridge.region().runDelayed(plugin, location, (t) -> task.run(), delayTicks);
         } else {
             Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
         }
@@ -178,7 +178,7 @@ public class SchedulerUtil {
      */
     public static void runAtEntity(Plugin plugin, Entity entity, Runnable task) {
         if (IS_FOLIA) {
-            entity.getScheduler().run(plugin, (t) -> task.run(), null);
+            FoliaBridge.entity(entity).run(plugin, (t) -> task.run(), null);
         } else {
             Bukkit.getScheduler().runTask(plugin, task);
         }
@@ -198,7 +198,7 @@ public class SchedulerUtil {
      */
     public static Object runAtEntityDelayed(Plugin plugin, Entity entity, Runnable task, long delayTicks) {
         if (IS_FOLIA) {
-            return entity.getScheduler().runDelayed(plugin, (t) -> task.run(), null, delayTicks);
+            return FoliaBridge.entity(entity).runDelayed(plugin, (t) -> task.run(), null, delayTicks);
         } else {
             return Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
         }
@@ -216,7 +216,7 @@ public class SchedulerUtil {
         if (IS_FOLIA) {
             // Folia tasks implement io.papermc.paper.threadedregions.scheduler.ScheduledTask
             try {
-                ((io.papermc.paper.threadedregions.scheduler.ScheduledTask) task).cancel();
+                FoliaBridge.cancel(task);
             } catch (Exception e) {
                 // Task might already be cancelled or invalid
             }

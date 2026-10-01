@@ -1,5 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import us.ironcladnetwork.copySign.Util.PlatformCompat;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -70,19 +72,19 @@ public class ServerTemplateGUIListener implements Listener {
         if (clickedItem.getType() == Material.EMERALD && isAdmin) {
             ItemStack heldItem = player.getInventory().getItemInMainHand();
             if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
-                player.sendMessage(Lang.TEMPLATE_MUST_HOLD_SIGN_DATA.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.TEMPLATE_MUST_HOLD_SIGN_DATA.getWithPrefix());
                 return;
             }
             
             if (!SignItemStorage.has(heldItem)) {
-                player.sendMessage(Lang.TEMPLATE_NO_DATA_ERROR.getWithPrefix());
+                PlatformCompat.sendMessage(player, Lang.TEMPLATE_NO_DATA_ERROR.getWithPrefix());
                 return;
             }
             
             // Ask for template name
             player.closeInventory();
-            player.sendMessage(Lang.TEMPLATE_CREATION_PROMPT.getWithPrefix());
-            player.sendMessage(Lang.TEMPLATE_CREATION_CANCEL_HINT.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.TEMPLATE_CREATION_PROMPT.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.TEMPLATE_CREATION_CANCEL_HINT.getWithPrefix());
             pendingTemplateNames.put(player.getUniqueId(), "CREATE");
             return;
         }
@@ -100,20 +102,20 @@ public class ServerTemplateGUIListener implements Listener {
             
             if (event.getClick() == ClickType.LEFT) {
                 if (templateName == null) {
-                    player.sendMessage(Lang.TEMPLATE_NAME_NOT_IDENTIFIED.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.TEMPLATE_NAME_NOT_IDENTIFIED.getWithPrefix());
                     return;
                 }
                 
                 // Load template
                 SavedSignData templateData = templateManager.getTemplate(templateName);
                 if (templateData == null) {
-                    player.sendMessage(Lang.TEMPLATE_NOT_FOUND.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.TEMPLATE_NOT_FOUND.getWithPrefix());
                     return;
                 }
                 
                 ItemStack heldItem = player.getInventory().getItemInMainHand();
                 if (heldItem == null || heldItem.getType() == Material.AIR || !heldItem.getType().name().endsWith("_SIGN")) {
-                    player.sendMessage(Lang.MUST_HOLD_SIGN.getWithPrefix());
+                    PlatformCompat.sendMessage(player, Lang.MUST_HOLD_SIGN.getWithPrefix());
                     return;
                 }
                 
@@ -121,7 +123,7 @@ public class ServerTemplateGUIListener implements Listener {
                 boolean heldHanging = heldItem.getType().name().contains("HANGING_SIGN");
                 boolean templateHanging = templateData.getSignType().equalsIgnoreCase("hanging");
                 if (heldHanging != templateHanging) {
-                    player.sendMessage(Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
+                    PlatformCompat.sendMessage(player, Lang.SIGN_TYPE_MISMATCH.formatWithPrefix(
                         "%held%", heldHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get(),
                         "%target%", templateHanging ? Lang.HANGING_SIGN.get() : Lang.REGULAR_SIGN.get()));
                     return;
@@ -163,17 +165,17 @@ public class ServerTemplateGUIListener implements Listener {
                             .deserialize(line)
                             .decoration(TextDecoration.ITALIC, false));
                     }
-                    updatedMeta.lore(loreComponents);
+                    PlatformCompat.lore(updatedMeta, loreComponents);
                     heldItem.setItemMeta(updatedMeta);
                 }
 
                 player.getInventory().setItemInMainHand(heldItem);
                 player.closeInventory();
-                player.sendMessage(Lang.TEMPLATE_LOADED_TO_SIGN.formatWithPrefix("%name%", templateName));
+                PlatformCompat.sendMessage(player, Lang.TEMPLATE_LOADED_TO_SIGN.formatWithPrefix("%name%", templateName));
                 
                 // Send enhanced mixed glow state warning if applicable
                 if (templateData.hasMixedGlowStates()) {
-                    player.sendMessage(DesignConstants.createMixedGlowWarning());
+                    PlatformCompat.sendMessage(player, DesignConstants.createMixedGlowWarning());
                 }
             }
         }
@@ -194,26 +196,26 @@ public class ServerTemplateGUIListener implements Listener {
         
         // Handle cancel
         if (message.equalsIgnoreCase("cancel")) {
-            player.sendMessage(Lang.TEMPLATE_CREATE_CANCELLED.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.TEMPLATE_CREATE_CANCELLED.getWithPrefix());
             return;
         }
         
         // Validate name
         if (message.contains(" ") || message.length() > 16) {
-            player.sendMessage(Lang.TEMPLATE_NAME_INVALID.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.TEMPLATE_NAME_INVALID.getWithPrefix());
             return;
         }
         
         // Check if template already exists
         if (templateManager.getTemplate(message) != null) {
-            player.sendMessage(Lang.TEMPLATE_NAME_EXISTS.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.TEMPLATE_NAME_EXISTS.getWithPrefix());
             return;
         }
         
         // Save the template
         ItemStack heldItem = player.getInventory().getItemInMainHand();
         if (templateManager.saveTemplate(player, message, heldItem)) {
-            player.sendMessage(Lang.TEMPLATE_CREATE_SUCCESS.getWithPrefix());
+            PlatformCompat.sendMessage(player, Lang.TEMPLATE_CREATE_SUCCESS.getWithPrefix());
         }
     }
     

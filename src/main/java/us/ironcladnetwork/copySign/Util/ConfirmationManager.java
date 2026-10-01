@@ -43,7 +43,7 @@ public class ConfirmationManager {
             if (pendingConfirmations.remove(playerId) != null) {
                 // Use entity scheduler to send message to player
                 SchedulerUtil.runAtEntity(plugin, player, () -> {
-                    player.sendMessage("§cConfirmation timed out.");
+                    PlatformCompat.sendMessage(player, "§cConfirmation timed out.");
                 });
                 timeoutTasks.remove(playerId);
             }

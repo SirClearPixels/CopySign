@@ -13,9 +13,11 @@
 
     <properties>
         <java.version>21</java.version>
+        <spigot.version>1.21.1-R0.1-SNAPSHOT</spigot.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>6.0.3</junit.version>
         <mockito.version>5.14.2</mockito.version>
+        <platform.test.exclude>no.such:artifact</platform.test.exclude>
     </properties>
 
     <build>
@@ -34,6 +36,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
+                <configuration><classpathDependencyExcludes><classpathDependencyExclude>${platform.test.exclude}</classpathDependencyExclude></classpathDependencyExcludes></configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -46,7 +49,8 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <relocations>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                    <relocations>
                                 <relocation>
                                     <pattern>org.bstats</pattern>
                                     <shadedPattern>us.ironcladnetwork.copySign.bstats</shadedPattern>
@@ -66,6 +70,7 @@
     </build>
 
     <repositories>
+        <repository><id>spigotmc</id><url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url></repository>
         <repository>
             <id>papermc</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
@@ -82,10 +87,14 @@
     </repositories>
 
     <dependencies>
+        <dependency><groupId>io.papermc.paper</groupId><artifactId>paper-api</artifactId><version>1.21.11-R0.1-SNAPSHOT</version><scope>test</scope></dependency>
+        <dependency><groupId>net.kyori</groupId><artifactId>adventure-text-serializer-plain</artifactId><version>4.25.0</version><scope>test</scope></dependency>
+        <dependency><groupId>net.kyori</groupId><artifactId>adventure-text-minimessage</artifactId><version>4.25.0</version></dependency>
+        <dependency><groupId>net.kyori</groupId><artifactId>adventure-text-serializer-legacy</artifactId><version>4.25.0</version></dependency>
         <dependency>
-            <groupId>dev.folia</groupId>
-            <artifactId>folia-api</artifactId>
-            <version>1.21.11-R0.1-SNAPSHOT</version>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>${spigot.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

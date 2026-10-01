@@ -1,5 +1,7 @@
 package us.ironcladnetwork.copySign.Listeners;
 
+import us.ironcladnetwork.copySign.Util.PlatformCompat;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.block.Block;
@@ -40,7 +42,7 @@ import us.ironcladnetwork.copySign.Util.SchedulerUtil;
  */
 public class SignChangeListener implements Listener {
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onSignChange(SignChangeEvent event) {
         Block block = event.getBlock();
         // Check if we have cached sign data for this sign location.
@@ -52,17 +54,17 @@ public class SignChangeListener implements Listener {
         for (int i = 0; i < Math.min(frontLines.length, 4); i++) {
             Component component = LegacyComponentSerializer.legacySection()
                 .deserialize(frontLines[i] != null ? frontLines[i] : "");
-            event.line(i, component);
+            PlatformCompat.signLine(event, i, component);
         }
 
         // Schedule a task on the next tick to update the back lines
         // since SignChangeEvent does not directly support modifying the back side.
         // Use region scheduler since this is a block operation
         SchedulerUtil.runAtLocationDelayed(CopySign.getInstance(), block.getLocation(), () -> {
-            Sign sign = (Sign) block.getState();
+            if (!(block.getState() instanceof Sign sign)) return;
             String[] backLines = data.getBack();
             // Update the back side lines if supported.
-            for (int i = 0; i < backLines.length; i++) {
+            for (int i = 0; i < Math.min(backLines.length, 4); i++) {
                 sign.getSide(Side.BACK).setLine(i, backLines[i]);
             }
             // Apply per-side glow state independently.
@@ -72,13 +74,14 @@ public class SignChangeListener implements Listener {
 
             // Play paste sound after successful paste
             if (event.getPlayer() != null) {
-                CopySign.getInstance().getSoundManager().playPasteSound(event.getPlayer());
-                // Record metrics
-                CopySign.getInstance().getMetricsManager().recordPasteOperation(event.getPlayer());
+                SchedulerUtil.runAtEntity(CopySign.getInstance(), event.getPlayer(), () -> {
+                    CopySign.getInstance().getSoundManager().playPasteSound(event.getPlayer());
+                    CopySign.getInstance().getMetricsManager().recordPasteOperation(event.getPlayer());
+                });
             }
         }, 1L); // 1 tick delay
 
         // Remove the data from the cache since it has now been applied.
         SignDataCache.remove(block.getLocation());
     }
-} 
+}
