@@ -73,6 +73,12 @@ A powerful Minecraft Spigot plugin that allows players to copy and paste sign te
 > long as the NBT-API plugin is still installed during that first launch. Once migrated,
 > NBT-API can be safely removed.
 
+For legacy copied-item migration on Minecraft 26.3, use NBT-API 2.16.1 or newer;
+2.16.1 added 26.3 item support. NBT-API remains optional for this 2.4 candidate:
+new copied items use Bukkit PDC. Keep NBT-API available until every old item that
+you need has been encountered and migrated, including items stored in chests.
+See [NBT-API 2.16.1 release notes](https://github.com/tr7zw/Item-NBT-API/releases/tag/2.16.1).
+
 ## 🚀 Installation
 
 ### Step 1: (Optional) Install Optional Plugins

@@ -134,60 +134,9 @@ sign-interaction:
 # SIGN TYPE RESTRICTIONS
 # =============================================================================
 sign-types:
-  # Control which sign types can be copied/pasted
-  # Remove entries to prevent copying specific sign types
-  # If empty, all sign types are allowed
-  allowed:
-    # Regular standing/wall signs
-    - "OAK_SIGN"
-    - "OAK_WALL_SIGN"
-    - "SPRUCE_SIGN"
-    - "SPRUCE_WALL_SIGN"
-    - "BIRCH_SIGN"
-    - "BIRCH_WALL_SIGN"
-    - "JUNGLE_SIGN"
-    - "JUNGLE_WALL_SIGN"
-    - "ACACIA_SIGN"
-    - "ACACIA_WALL_SIGN"
-    - "DARK_OAK_SIGN"
-    - "DARK_OAK_WALL_SIGN"
-    - "MANGROVE_SIGN"
-    - "MANGROVE_WALL_SIGN"
-    - "CHERRY_SIGN"
-    - "CHERRY_WALL_SIGN"
-    - "BAMBOO_SIGN"
-    - "BAMBOO_WALL_SIGN"
-    - "CRIMSON_SIGN"
-    - "CRIMSON_WALL_SIGN"
-    - "WARPED_SIGN"
-    - "WARPED_WALL_SIGN"
-    - "PALE_OAK_SIGN"
-    - "PALE_OAK_WALL_SIGN"
-    # Hanging signs (1.20+)
-    - "OAK_HANGING_SIGN"
-    - "OAK_WALL_HANGING_SIGN"
-    - "SPRUCE_HANGING_SIGN"
-    - "SPRUCE_WALL_HANGING_SIGN"
-    - "BIRCH_HANGING_SIGN"
-    - "BIRCH_WALL_HANGING_SIGN"
-    - "JUNGLE_HANGING_SIGN"
-    - "JUNGLE_WALL_HANGING_SIGN"
-    - "ACACIA_HANGING_SIGN"
-    - "ACACIA_WALL_HANGING_SIGN"
-    - "DARK_OAK_HANGING_SIGN"
-    - "DARK_OAK_WALL_HANGING_SIGN"
-    - "MANGROVE_HANGING_SIGN"
-    - "MANGROVE_WALL_HANGING_SIGN"
-    - "CHERRY_HANGING_SIGN"
-    - "CHERRY_WALL_HANGING_SIGN"
-    - "BAMBOO_HANGING_SIGN"
-    - "BAMBOO_WALL_HANGING_SIGN"
-    - "CRIMSON_HANGING_SIGN"
-    - "CRIMSON_WALL_HANGING_SIGN"
-    - "WARPED_HANGING_SIGN"
-    - "WARPED_WALL_HANGING_SIGN"
-    - "PALE_OAK_HANGING_SIGN"
-    - "PALE_OAK_WALL_HANGING_SIGN"
+  # Empty allows all server sign types, including newly added wood sets.
+  # To restrict signs, supply an explicit list of material names.
+  allowed: []
 
 # =============================================================================
 # STORAGE SETTINGS
@@ -329,4 +278,4 @@ metrics:
 # ADVANCED SETTINGS
 # =============================================================================
 # Don't modify this unless instructed by plugin support
-config-version: 2
+config-version: 3

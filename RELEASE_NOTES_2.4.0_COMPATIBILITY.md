@@ -9,6 +9,8 @@ These changes extend the existing, unpublished 2.4 work; they do not replace its
 - Guard delayed sign updates against a removed/replaced sign and route sound/metrics work back to the player scheduler.
 - Ignore cancelled placement/edit events.
 - Preserve automatic recognition of new regular, wall, hanging, and wall-hanging signs, including Poplar, without a fixed wood list. An explicit administrator allowlist continues to restrict sign types.
+- Use automatic sign-type defaults for fresh configurations and migrate the recognized shipped 44/48-entry lists, which otherwise reject Poplar; preserve custom restrictions.
+- Update the optional legacy-item migration API to NBT-API 2.16.1, which supports Minecraft 26.3 items. New item storage still uses native PDC without NBT-API.
 - Merge the 12 GitHub README commits into the existing local development history without discarding either side.
 
 This candidate compiles against Spigot APIs 26.1, 26.1.1, 26.1.2, 26.2, and 26.3. Java 25 is required by 26.x servers; the plugin keeps Java 21 bytecode for older servers. The full automated suite and separate Spigot fallback tests are reported in the task compatibility report. Runtime API probes do not establish full player-driven gameplay coverage. Folia 26.3 has no official downloadable build at the time of testing.

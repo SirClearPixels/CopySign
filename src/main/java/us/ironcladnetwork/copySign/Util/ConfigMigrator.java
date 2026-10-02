@@ -22,7 +22,7 @@ public class ConfigMigrator {
     private boolean migrationPerformed = false;
     
     // Current configuration version
-    private static final int CURRENT_VERSION = 2;
+    private static final int CURRENT_VERSION = 3;
     
     public ConfigMigrator(CopySign plugin) {
         this.plugin = plugin;
@@ -59,6 +59,10 @@ public class ConfigMigrator {
         if (version < 2) {
             migrateToV2(config);
         }
+
+        if (version < 3) {
+            migrateDefaultSignTypes(config);
+        }
         
         // Update version
         config.set("config-version", CURRENT_VERSION);
@@ -72,6 +76,23 @@ public class ConfigMigrator {
         } catch (IOException e) {
             plugin.getLogger().severe("Failed to save migrated configuration: " + e.getMessage());
             return false;
+        }
+    }
+
+    /** Upgrade only recognized shipped allowlists; preserve administrator restrictions. */
+    static void migrateDefaultSignTypes(FileConfiguration config) {
+        java.util.List<String> configured = config.getStringList("sign-types.allowed");
+        for (boolean paleOak : new boolean[]{false, true}) {
+            java.util.Set<String> shipped = new java.util.HashSet<>();
+            for (String wood : java.util.List.of("OAK", "SPRUCE", "BIRCH", "JUNGLE", "ACACIA",
+                    "DARK_OAK", "MANGROVE", "CHERRY", "BAMBOO", "CRIMSON", "WARPED", "PALE_OAK")) {
+                if (!paleOak && wood.equals("PALE_OAK")) continue;
+                for (String suffix : java.util.List.of("_SIGN", "_WALL_SIGN", "_HANGING_SIGN", "_WALL_HANGING_SIGN")) shipped.add(wood + suffix);
+            }
+            if (configured.size() == shipped.size() && shipped.equals(new java.util.HashSet<>(configured))) {
+                config.set("sign-types.allowed", java.util.List.of());
+                return;
+            }
         }
     }
     
